@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EMCLOUD rankings</title>
+  <meta name="description" content="Weekly rankings of the BVP Nasdaq Emerging Cloud Index.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231b1714'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Georgia' font-size='16' fill='%23f3eadc'%3EE%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,550;1,6..72,550&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #1b1714;
+      --muted: #6d655c;
+      --paper: #e5ded2;
+      --sheet: #f7f4ee;
+      --line: #e3dace;
+      --brass: #8d5a2b;
+      --neg: #8f3a32;
+      --hover: #e5f1e4;
+      --rank-w: 4.5rem;
+      --company-w: 13.75rem;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+      font-size: 15px;
+      line-height: 1.4;
+    }
+    .mast {
+      display: flex;
+      justify-content: space-between;
+      gap: 1.5rem;
+      align-items: end;
+      padding: 1.25rem 1.5rem 1rem;
+      background: var(--ink);
+      color: #f3eadc;
+    }
+    .kicker {
+      margin: 0 0 0.2rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+    }
+    h1 {
+      margin: 0;
+      font-family: Newsreader, Georgia, serif;
+      font-size: clamp(1.8rem, 3vw, 2.6rem);
+      font-weight: 550;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .deck, .updated, .count { margin: 0.35rem 0 0; color: #cbbfae; }
+    .deck { max-width: 38rem; }
+    .mast-side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.65rem; }
+    .count { font-variant-numeric: tabular-nums; }
+    .filter input {
+      width: min(18rem, 70vw);
+      padding: 0.6rem 0.9rem;
+      border: 1px solid #4a433c;
+      border-radius: 999px;
+      background: transparent;
+      color: #f3eadc;
+      font: 1rem/1.2 "IBM Plex Sans", sans-serif;
+    }
+    .filter input::placeholder { color: #a89886; }
+    .filter input:focus { outline: 2px solid #d7b48a; outline-offset: 2px; }
+    .hint {
+      margin: 0;
+      padding: 0.45rem 1.5rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    .sheet {
+      flex: 1;
+      min-height: 0;
+      margin: 0 1rem 1rem;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      background: var(--sheet);
+      border: 1px solid #d5cec2;
+      border-radius: 12px;
+    }
+    table {
+      width: max-content;
+      min-width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    caption {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    th, td {
+      padding: 0.62rem 0.8rem;
+      text-align: left;
+      white-space: nowrap;
+      background: var(--sheet);
+      vertical-align: bottom;
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding-top: 0.75rem;
+      padding-bottom: 0.7rem;
+      background: var(--ink);
+      color: #f3eadc;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    thead th span, thead th small { display: block; }
+    thead th small {
+      margin-top: 0.15rem;
+      color: #b7aa9a;
+      font-size: 0.68rem;
+      font-weight: 400;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    tbody th, tbody td { border-bottom: 1px solid var(--line); font-weight: 400; }
+    tbody tr:hover th, tbody tr:hover td { background: var(--hover); }
+    .col-rank, .col-company { position: sticky; z-index: 1; }
+    .col-rank { left: 0; width: var(--rank-w); min-width: var(--rank-w); max-width: var(--rank-w); }
+    .col-company { left: var(--rank-w); width: var(--company-w); min-width: var(--company-w); max-width: var(--company-w); }
+    thead .col-rank, thead .col-company { z-index: 3; }
+    tbody .col-company {
+      font-weight: 500;
+      box-shadow: 1px 0 0 var(--line), 12px 0 16px -14px rgba(27, 23, 20, 0.85);
+    }
+    thead .col-company { box-shadow: 1px 0 0 #3a342e; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; min-width: 7.5rem; }
+    .top { color: var(--brass); font-weight: 600; }
+    .score { font-weight: 600; }
+    .neg { color: var(--neg); }
+    .empty {
+      margin: 0 1rem 0.35rem;
+      color: var(--muted);
+    }
+    .note {
+      margin: 0 1rem 0.85rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    @media (max-width: 720px) {
+      :root { --rank-w: 3.25rem; --company-w: 9.25rem; }
+      .mast { flex-direction: column; align-items: stretch; gap: 0.7rem; padding: 0.8rem 0.85rem 0.7rem; }
+      .mast-side { align-items: stretch; gap: 0.35rem; }
+      h1 { font-size: 1.65rem; }
+      .deck { font-size: 0.92rem; }
+      .updated, .count { margin: 0; }
+      .filter input { width: 100%; }
+      .hint, .sheet, .empty, .note { margin-left: 0.5rem; margin-right: 0.5rem; }
+      .hint { padding-left: 0.25rem; padding-right: 0.25rem; }
+      th, td { padding: 0.55rem 0.7rem; }
+      .col-company { overflow: hidden; text-overflow: ellipsis; }
+    }
+  </style>
+</head>
+<body>
+  <header class="mast">
+    <div>
+      <p class="kicker">EMCLOUD</p>
+      <h1>Emerging cloud rankings</h1>
+      <p class="deck">BVP Nasdaq Emerging Cloud Index, weighted across efficiency, valuation, growth, margins, and scale.</p>
+    </div>
+    <div class="mast-side">
+      <p class="updated">Updated 14 Nov 2026 · 16:59 UTC</p>
+      <p class="count"><span id="count">64</span> companies</p>
+      <label class="filter">
+        <span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Filter by company or ticker</span>
+        <input id="q" type="search" placeholder="Filter company or ticker" autocomplete="off" enterkeyhint="search">
+      </label>
+    </div>
+  </header>
+  <p class="hint">Scroll sideways for every metric. Rank and company stay fixed.</p>
+  <div class="sheet" id="sheet">
+    <table>
+      <caption>Emerging cloud company rankings</caption>
+      <thead><tr><th class="col-rank" scope="col"><span>Rank</span><small>&nbsp;</small></th><th class="col-company" scope="col"><span>Company</span><small>&nbsp;</small></th><th scope="col"><span>Ticker</span><small>&nbsp;</small></th><th class="num" scope="col"><span>Price</span><small>USD</small></th><th class="num" scope="col"><span>Market cap</span><small>USD bn</small></th><th class="num" scope="col"><span>EV / revenue</span><small>Annualized</small></th><th class="num" scope="col"><span>EV / revenue</span><small>Forward</small></th><th class="num" scope="col"><span>Efficiency</span><small>&nbsp;</small></th><th class="num" scope="col"><span>Revenue growth</span><small>&nbsp;</small></th><th class="num" scope="col"><span>Gross margin</span><small>&nbsp;</small></th><th class="num" scope="col"><span>FCF margin</span><small>LTM</small></th><th class="num" scope="col"><span>SG&amp;A margin</span><small>&nbsp;</small></th><th class="num" scope="col"><span>R&amp;D</span><small>of revenue</small></th><th class="num" scope="col"><span>Sales &amp; marketing</span><small>of revenue</small></th><th class="num" scope="col"><span>Rule of X</span><small>&nbsp;</small></th><th class="num" scope="col"><span>Score</span><small>Weighted</small></th></tr></thead>
+      <tbody id="rows">
+<tr data-search="adobe adbe"><th class="col-rank top" scope="row">1</th><th class="col-company" scope="row" title="Adobe">Adobe</th><td>ADBE</td><td class="num">$243.08</td><td class="num">$94.6B</td><td class="num">3.5×</td><td class="num">3.3×</td><td class="num">52.1%</td><td class="num">12.9%</td><td class="num">88.7%</td><td class="num">39.2%</td><td class="num">34.3%</td><td class="num">18.1%</td><td class="num">27.5%</td><td class="num">65.0%</td><td class="num score">47.10</td></tr>
+<tr data-search="palantir pltr"><th class="col-rank top" scope="row">2</th><th class="col-company" scope="row" title="Palantir">Palantir</th><td>PLTR</td><td class="num">$167.99</td><td class="num">$404.8B</td><td class="num">42.6×</td><td class="num">28.3×</td><td class="num">139.7%</td><td class="num">95.9%</td><td class="num">83.4%</td><td class="num">43.8%</td><td class="num">29.3%</td><td class="num">9.8%</td><td class="num">18.6%</td><td class="num">235.6%</td><td class="num score">46.10</td></tr>
+<tr data-search="atlassian team"><th class="col-rank top" scope="row">3</th><th class="col-company" scope="row" title="Atlassian">Atlassian</th><td>TEAM</td><td class="num">$149.99</td><td class="num">$37.8B</td><td class="num">5.3×</td><td class="num">4.7×</td><td class="num">47.2%</td><td class="num">23.7%</td><td class="num">85.2%</td><td class="num">23.5%</td><td class="num">32.8%</td><td class="num">47.7%</td><td class="num">23.6%</td><td class="num">70.9%</td><td class="num score">42.82</td></tr>
+<tr data-search="datadog ddog"><th class="col-rank" scope="row">4</th><th class="col-company" scope="row" title="Datadog">Datadog</th><td>DDOG</td><td class="num">$184.16</td><td class="num">$66.5B</td><td class="num">13.1×</td><td class="num">10.9×</td><td class="num">60.8%</td><td class="num">35.2%</td><td class="num">80.2%</td><td class="num">25.6%</td><td class="num">34.2%</td><td class="num">41.3%</td><td class="num">26.9%</td><td class="num">95.9%</td><td class="num score">42.38</td></tr>
+<tr data-search="palo alto networks panw"><th class="col-rank" scope="row">5</th><th class="col-company" scope="row" title="Palo Alto Networks">Palo Alto Networks</th><td>PANW</td><td class="num">$322.24</td><td class="num">$263.2B</td><td class="num">19.3×</td><td class="num">16.8×</td><td class="num">64.6%</td><td class="num">34.5%</td><td class="num">67.6%</td><td class="num">30.2%</td><td class="num">41.1%</td><td class="num">22.2%</td><td class="num">33.6%</td><td class="num">99.1%</td><td class="num score">41.65</td></tr>
+<tr data-search="salesforce crm"><th class="col-rank" scope="row">6</th><th class="col-company" scope="row" title="Salesforce">Salesforce</th><td>CRM</td><td class="num">$217.84</td><td class="num">$179.3B</td><td class="num">4.6×</td><td class="num">4.2×</td><td class="num">44.2%</td><td class="num">10.8%</td><td class="num">76.7%</td><td class="num">33.4%</td><td class="num">41.3%</td><td class="num">14.5%</td><td class="num">34.4%</td><td class="num">55.1%</td><td class="num score">41.58</td></tr>
+<tr data-search="nutanix ntnx"><th class="col-rank" scope="row">7</th><th class="col-company" scope="row" title="Nutanix">Nutanix</th><td>NTNX</td><td class="num">$60.38</td><td class="num">$16.3B</td><td class="num">5.1×</td><td class="num">4.6×</td><td class="num">43.7%</td><td class="num">15.9%</td><td class="num">86.5%</td><td class="num">27.8%</td><td class="num">48.8%</td><td class="num">27.5%</td><td class="num">39.7%</td><td class="num">59.5%</td><td class="num score">41.42</td></tr>
+<tr data-search="hubspot hubs"><th class="col-rank" scope="row">8</th><th class="col-company" scope="row" title="HubSpot">HubSpot</th><td>HUBS</td><td class="num">$217.25</td><td class="num">$10.6B</td><td class="num">2.5×</td><td class="num">2.3×</td><td class="num">39.3%</td><td class="num">17.1%</td><td class="num">82.6%</td><td class="num">22.2%</td><td class="num">52.3%</td><td class="num">25.2%</td><td class="num">43.0%</td><td class="num">56.3%</td><td class="num score">40.53</td></tr>
+<tr data-search="crowdstrike crwd"><th class="col-rank" scope="row">9</th><th class="col-company" scope="row" title="Crowdstrike">Crowdstrike</th><td>CRWD</td><td class="num">$226.61</td><td class="num">$232.5B</td><td class="num">38.8×</td><td class="num">31.8×</td><td class="num">53.2%</td><td class="num">25.8%</td><td class="num">74.6%</td><td class="num">27.3%</td><td class="num">48.7%</td><td class="num">29.0%</td><td class="num">36.0%</td><td class="num">79.0%</td><td class="num score">40.10</td></tr>
+<tr data-search="servicenow now"><th class="col-rank" scope="row">10</th><th class="col-company" scope="row" title="ServiceNow">ServiceNow</th><td>NOW</td><td class="num">$102.25</td><td class="num">$106.1B</td><td class="num">6.6×</td><td class="num">5.5×</td><td class="num">49.4%</td><td class="num">20.5%</td><td class="num">70.5%</td><td class="num">28.9%</td><td class="num">39.2%</td><td class="num">21.1%</td><td class="num">32.5%</td><td class="num">70.0%</td><td class="num score">39.93</td></tr>
+<tr data-search="jfrog frog"><th class="col-rank" scope="row">11</th><th class="col-company" scope="row" title="JFrog">JFrog</th><td>FROG</td><td class="num">$113.60</td><td class="num">$14.2B</td><td class="num">18.7×</td><td class="num">15.9×</td><td class="num">59.8%</td><td class="num">30.9%</td><td class="num">79.6%</td><td class="num">28.9%</td><td class="num">52.3%</td><td class="num">32.9%</td><td class="num">37.3%</td><td class="num">90.7%</td><td class="num score">39.75</td></tr>
+<tr data-search="docusign docu"><th class="col-rank" scope="row">12</th><th class="col-company" scope="row" title="DocuSign">DocuSign</th><td>DOCU</td><td class="num">$80.76</td><td class="num">$15.1B</td><td class="num">4.1×</td><td class="num">3.8×</td><td class="num">43.6%</td><td class="num">9.4%</td><td class="num">79.8%</td><td class="num">34.2%</td><td class="num">47.9%</td><td class="num">19.6%</td><td class="num">36.1%</td><td class="num">53.0%</td><td class="num score">39.28</td></tr>
+<tr data-search="veeva systems veev"><th class="col-rank" scope="row">13</th><th class="col-company" scope="row" title="Veeva Systems">Veeva Systems</th><td>VEEV</td><td class="num">$301.53</td><td class="num">$48.8B</td><td class="num">11.2×</td><td class="num">10.1×</td><td class="num">61.8%</td><td class="num">17.6%</td><td class="num">75.0%</td><td class="num">44.1%</td><td class="num">21.3%</td><td class="num">23.8%</td><td class="num">13.3%</td><td class="num">79.4%</td><td class="num score">39.15</td></tr>
+<tr data-search="figma fig"><th class="col-rank" scope="row">14</th><th class="col-company" scope="row" title="Figma">Figma</th><td>FIG</td><td class="num">$19.45</td><td class="num">$10.4B</td><td class="num">5.6×</td><td class="num">4.6×</td><td class="num">57.1%</td><td class="num">42.8%</td><td class="num">80.3%</td><td class="num">14.3%</td><td class="num">69.1%</td><td class="num">52.8%</td><td class="num">39.0%</td><td class="num">99.9%</td><td class="num score">38.80</td></tr>
+<tr data-search="zscaler zs"><th class="col-rank" scope="row">15</th><th class="col-company" scope="row" title="Zscaler">Zscaler</th><td>ZS</td><td class="num">$192.47</td><td class="num">$31.4B</td><td class="num">8.3×</td><td class="num">7.1×</td><td class="num">48.6%</td><td class="num">24.9%</td><td class="num">76.8%</td><td class="num">23.7%</td><td class="num">53.1%</td><td class="num">26.7%</td><td class="num">44.1%</td><td class="num">73.5%</td><td class="num score">38.70</td></tr>
+<tr data-search="workday wday"><th class="col-rank" scope="row">16</th><th class="col-company" scope="row" title="Workday">Workday</th><td>WDAY</td><td class="num">$196.45</td><td class="num">$47.3B</td><td class="num">4.5×</td><td class="num">4.1×</td><td class="num">39.7%</td><td class="num">12.8%</td><td class="num">75.4%</td><td class="num">26.8%</td><td class="num">36.1%</td><td class="num">27.7%</td><td class="num">27.0%</td><td class="num">52.5%</td><td class="num score">38.22</td></tr>
+<tr data-search="mongodb mdb"><th class="col-rank" scope="row">17</th><th class="col-company" scope="row" title="MongoDB">MongoDB</th><td>MDB</td><td class="num">$334.20</td><td class="num">$26.9B</td><td class="num">8.0×</td><td class="num">6.8×</td><td class="num">51.8%</td><td class="num">30.5%</td><td class="num">73.8%</td><td class="num">21.3%</td><td class="num">45.1%</td><td class="num">28.0%</td><td class="num">35.3%</td><td class="num">82.3%</td><td class="num score">37.60</td></tr>
+<tr data-search="dynatrace dt"><th class="col-rank" scope="row">18</th><th class="col-company" scope="row" title="Dynatrace">Dynatrace</th><td>DT</td><td class="num">$44.80</td><td class="num">$12.9B</td><td class="num">5.3×</td><td class="num">4.6×</td><td class="num">42.4%</td><td class="num">17.4%</td><td class="num">81.0%</td><td class="num">24.9%</td><td class="num">43.7%</td><td class="num">23.8%</td><td class="num">33.0%</td><td class="num">59.8%</td><td class="num score">37.28</td></tr>
+<tr data-search="snowflake snow"><th class="col-rank" scope="row">19</th><th class="col-company" scope="row" title="Snowflake">Snowflake</th><td>SNOW</td><td class="num">$291.00</td><td class="num">$102.6B</td><td class="num">16.3×</td><td class="num">12.7×</td><td class="num">54.4%</td><td class="num">35.1%</td><td class="num">67.0%</td><td class="num">19.3%</td><td class="num">50.7%</td><td class="num">38.8%</td><td class="num">42.4%</td><td class="num">89.5%</td><td class="num score">37.08</td></tr>
+<tr data-search="rubrik rbrk"><th class="col-rank" scope="row">20</th><th class="col-company" scope="row" title="Rubrik">Rubrik</th><td>RBRK</td><td class="num">$109.88</td><td class="num">$22.8B</td><td class="num">13.0×</td><td class="num">10.9×</td><td class="num">55.7%</td><td class="num">37.9%</td><td class="num">78.4%</td><td class="num">17.8%</td><td class="num">69.9%</td><td class="num">29.7%</td><td class="num">56.3%</td><td class="num">93.6%</td><td class="num score">37.05</td></tr>
+<tr data-search="cellebrite clbt"><th class="col-rank" scope="row">21</th><th class="col-company" scope="row" title="Cellebrite">Cellebrite</th><td>CLBT</td><td class="num">$11.54</td><td class="num">$2.9B</td><td class="num">3.9×</td><td class="num">3.6×</td><td class="num">46.1%</td><td class="num">18.2%</td><td class="num">81.2%</td><td class="num">27.9%</td><td class="num">44.7%</td><td class="num">25.7%</td><td class="num">30.2%</td><td class="num">64.3%</td><td class="num score">36.78</td></tr>
+<tr data-search="bill.com bill"><th class="col-rank" scope="row">22</th><th class="col-company" scope="row" title="Bill.com">Bill.com</th><td>BILL</td><td class="num">$54.48</td><td class="num">$4.7B</td><td class="num">3.5×</td><td class="num">3.2×</td><td class="num">41.7%</td><td class="num">12.5%</td><td class="num">80.5%</td><td class="num">29.2%</td><td class="num">52.8%</td><td class="num">17.5%</td><td class="num">39.3%</td><td class="num">54.2%</td><td class="num score">35.92</td></tr>
+<tr data-search="freshworks frsh"><th class="col-rank" scope="row">23</th><th class="col-company" scope="row" title="Freshworks">Freshworks</th><td>FRSH</td><td class="num">$12.66</td><td class="num">$3.3B</td><td class="num">2.7×</td><td class="num">2.4×</td><td class="num">39.2%</td><td class="num">14.1%</td><td class="num">85.3%</td><td class="num">25.2%</td><td class="num">57.9%</td><td class="num">19.2%</td><td class="num">45.7%</td><td class="num">53.3%</td><td class="num score">35.63</td></tr>
+<tr data-search="paycom payc"><th class="col-rank" scope="row">24</th><th class="col-company" scope="row" title="Paycom">Paycom</th><td>PAYC</td><td class="num">$248.86</td><td class="num">$11.0B</td><td class="num">5.4×</td><td class="num">5.0×</td><td class="num">40.5%</td><td class="num">10.2%</td><td class="num">88.5%</td><td class="num">30.3%</td><td class="num">35.1%</td><td class="num">10.7%</td><td class="num">22.8%</td><td class="num">50.8%</td><td class="num score">34.95</td></tr>
+<tr data-search="monday.com mndy"><th class="col-rank" scope="row">25</th><th class="col-company" scope="row" title="Monday.com">Monday.com</th><td>MNDY</td><td class="num">$78.00</td><td class="num">$3.3B</td><td class="num">1.6×</td><td class="num">1.4×</td><td class="num">33.9%</td><td class="num">19.2%</td><td class="num">88.0%</td><td class="num">14.8%</td><td class="num">57.4%</td><td class="num">25.4%</td><td class="num">45.4%</td><td class="num">53.1%</td><td class="num score">34.75</td></tr>
+<tr data-search="zeta zeta"><th class="col-rank" scope="row">26</th><th class="col-company" scope="row" title="Zeta">Zeta</th><td>ZETA</td><td class="num">$36.65</td><td class="num">$9.4B</td><td class="num">4.7×</td><td class="num">4.0×</td><td class="num">59.3%</td><td class="num">46.1%</td><td class="num">60.3%</td><td class="num">13.2%</td><td class="num">40.2%</td><td class="num">9.2%</td><td class="num">23.7%</td><td class="num">105.4%</td><td class="num score">34.45</td></tr>
+<tr data-search="gitlab gtlb"><th class="col-rank" scope="row">27</th><th class="col-company" scope="row" title="Gitlab">Gitlab</th><td>GTLB</td><td class="num">$47.73</td><td class="num">$8.0B</td><td class="num">5.8×</td><td class="num">5.1×</td><td class="num">40.0%</td><td class="num">21.3%</td><td class="num">84.5%</td><td class="num">18.7%</td><td class="num">64.0%</td><td class="num">27.9%</td><td class="num">43.9%</td><td class="num">61.3%</td><td class="num score">34.10</td></tr>
+<tr data-search="klaviyo kvyo"><th class="col-rank" scope="row">28</th><th class="col-company" scope="row" title="Klaviyo">Klaviyo</th><td>KVYO</td><td class="num">$22.13</td><td class="num">$6.2B</td><td class="num">3.7×</td><td class="num">3.1×</td><td class="num">40.4%</td><td class="num">24.6%</td><td class="num">74.2%</td><td class="num">15.8%</td><td class="num">51.3%</td><td class="num">23.3%</td><td class="num">37.2%</td><td class="num">64.9%</td><td class="num score">34.08</td></tr>
+<tr data-search="okta okta"><th class="col-rank" scope="row">29</th><th class="col-company" scope="row" title="Okta">Okta</th><td>OKTA</td><td class="num">$182.87</td><td class="num">$32.0B</td><td class="num">9.2×</td><td class="num">8.4×</td><td class="num">41.0%</td><td class="num">10.6%</td><td class="num">79.6%</td><td class="num">30.4%</td><td class="num">49.3%</td><td class="num">21.2%</td><td class="num">35.3%</td><td class="num">51.6%</td><td class="num score">34.05</td></tr>
+<tr data-search="workiva wk"><th class="col-rank" scope="row">30</th><th class="col-company" scope="row" title="Workiva">Workiva</th><td>WK</td><td class="num">$68.16</td><td class="num">$3.7B</td><td class="num">3.4×</td><td class="num">3.0×</td><td class="num">38.5%</td><td class="num">17.3%</td><td class="num">81.1%</td><td class="num">21.2%</td><td class="num">53.2%</td><td class="num">22.2%</td><td class="num">42.6%</td><td class="num">55.8%</td><td class="num score">33.83</td></tr>
+<tr data-search="uipath path"><th class="col-rank" scope="row">31</th><th class="col-company" scope="row" title="UiPath">UiPath</th><td>PATH</td><td class="num">$13.27</td><td class="num">$6.9B</td><td class="num">3.4×</td><td class="num">3.1×</td><td class="num">35.5%</td><td class="num">13.4%</td><td class="num">80.4%</td><td class="num">22.1%</td><td class="num">51.6%</td><td class="num">21.3%</td><td class="num">39.8%</td><td class="num">48.9%</td><td class="num score">33.78</td></tr>
+<tr data-search="cloudflare net"><th class="col-rank" scope="row">32</th><th class="col-company" scope="row" title="Cloudflare">Cloudflare</th><td>NET</td><td class="num">$305.81</td><td class="num">$109.6B</td><td class="num">34.9×</td><td class="num">26.8×</td><td class="num">50.5%</td><td class="num">39.2%</td><td class="num">71.2%</td><td class="num">11.3%</td><td class="num">57.1%</td><td class="num">22.7%</td><td class="num">41.6%</td><td class="num">89.7%</td><td class="num score">33.62</td></tr>
+<tr data-search="qualys qlys"><th class="col-rank" scope="row">33</th><th class="col-company" scope="row" title="Qualys">Qualys</th><td>QLYS</td><td class="num">$172.94</td><td class="num">$6.0B</td><td class="num">7.0×</td><td class="num">6.5×</td><td class="num">53.8%</td><td class="num">10.7%</td><td class="num">83.3%</td><td class="num">43.1%</td><td class="num">32.4%</td><td class="num">16.5%</td><td class="num">22.3%</td><td class="num">64.5%</td><td class="num score">32.92</td></tr>
+<tr data-search="shopify shop"><th class="col-rank" scope="row">34</th><th class="col-company" scope="row" title="Shopify">Shopify</th><td>SHOP</td><td class="num">$147.09</td><td class="num">$189.2B</td><td class="num">12.3×</td><td class="num">9.8×</td><td class="num">49.4%</td><td class="num">31.6%</td><td class="num">47.6%</td><td class="num">17.8%</td><td class="num">16.9%</td><td class="num">12.4%</td><td class="num">13.3%</td><td class="num">80.9%</td><td class="num score">32.55</td></tr>
+<tr data-search="twilio twlo"><th class="col-rank" scope="row">35</th><th class="col-company" scope="row" title="Twilio">Twilio</th><td>TWLO</td><td class="num">$211.21</td><td class="num">$32.7B</td><td class="num">4.9×</td><td class="num">4.5×</td><td class="num">38.7%</td><td class="num">19.9%</td><td class="num">48.8%</td><td class="num">18.8%</td><td class="num">22.5%</td><td class="num">18.5%</td><td class="num">14.8%</td><td class="num">58.7%</td><td class="num score">32.40</td></tr>
+<tr data-search="samsara iot"><th class="col-rank" scope="row">36</th><th class="col-company" scope="row" title="Samsara">Samsara</th><td>IOT</td><td class="num">$41.36</td><td class="num">$24.2B</td><td class="num">11.3×</td><td class="num">9.5×</td><td class="num">42.4%</td><td class="num">29.9%</td><td class="num">77.3%</td><td class="num">12.6%</td><td class="num">55.0%</td><td class="num">20.3%</td><td class="num">41.4%</td><td class="num">72.3%</td><td class="num score">32.12</td></tr>
+<tr data-search="procore pcor"><th class="col-rank" scope="row">37</th><th class="col-company" scope="row" title="Procore">Procore</th><td>PCOR</td><td class="num">$77.62</td><td class="num">$11.6B</td><td class="num">7.5×</td><td class="num">6.4×</td><td class="num">38.2%</td><td class="num">18.7%</td><td class="num">80.6%</td><td class="num">19.5%</td><td class="num">56.4%</td><td class="num">24.5%</td><td class="num">39.8%</td><td class="num">57.0%</td><td class="num score">31.80</td></tr>
+<tr data-search="toast tost"><th class="col-rank" scope="row">38</th><th class="col-company" scope="row" title="Toast">Toast</th><td>TOST</td><td class="num">$34.68</td><td class="num">$20.1B</td><td class="num">2.3×</td><td class="num">2.0×</td><td class="num">28.9%</td><td class="num">21.3%</td><td class="num">27.5%</td><td class="num">7.6%</td><td class="num">14.0%</td><td class="num">5.7%</td><td class="num">9.0%</td><td class="num">50.2%</td><td class="num score">30.93</td></tr>
+<tr data-search="elastic estc"><th class="col-rank" scope="row">39</th><th class="col-company" scope="row" title="Elastic">Elastic</th><td>ESTC</td><td class="num">$88.15</td><td class="num">$9.3B</td><td class="num">4.4×</td><td class="num">3.9×</td><td class="num">33.4%</td><td class="num">15.1%</td><td class="num">74.6%</td><td class="num">18.3%</td><td class="num">51.4%</td><td class="num">25.0%</td><td class="num">40.6%</td><td class="num">48.5%</td><td class="num score">30.60</td></tr>
+<tr data-search="ringcentral rng"><th class="col-rank" scope="row">40</th><th class="col-company" scope="row" title="Ringcentral">Ringcentral</th><td>RNG</td><td class="num">$75.39</td><td class="num">$6.4B</td><td class="num">2.7×</td><td class="num">2.6×</td><td class="num">30.5%</td><td class="num">5.9%</td><td class="num">73.2%</td><td class="num">24.7%</td><td class="num">51.3%</td><td class="num">12.9%</td><td class="num">43.1%</td><td class="num">36.4%</td><td class="num score">29.98</td></tr>
+<tr data-search="intapp inta"><th class="col-rank" scope="row">41</th><th class="col-company" scope="row" title="Intapp">Intapp</th><td>INTA</td><td class="num">$46.16</td><td class="num">$3.5B</td><td class="num">5.3×</td><td class="num">4.7×</td><td class="num">40.7%</td><td class="num">16.0%</td><td class="num">77.9%</td><td class="num">24.7%</td><td class="num">52.8%</td><td class="num">26.6%</td><td class="num">34.7%</td><td class="num">56.7%</td><td class="num score">29.92</td></tr>
+<tr data-search="waystar way"><th class="col-rank" scope="row">42</th><th class="col-company" scope="row" title="Waystar">Waystar</th><td>WAY</td><td class="num">$27.99</td><td class="num">$5.4B</td><td class="num">5.1×</td><td class="num">4.6×</td><td class="num">41.5%</td><td class="num">21.2%</td><td class="num">69.5%</td><td class="num">20.3%</td><td class="num">27.3%</td><td class="num">5.9%</td><td class="num">15.6%</td><td class="num">62.7%</td><td class="num score">29.40</td></tr>
+<tr data-search="tenable tenb"><th class="col-rank" scope="row">43</th><th class="col-company" scope="row" title="Tenable">Tenable</th><td>TENB</td><td class="num">$40.76</td><td class="num">$4.3B</td><td class="num">4.2×</td><td class="num">3.9×</td><td class="num">34.9%</td><td class="num">9.5%</td><td class="num">77.8%</td><td class="num">25.4%</td><td class="num">51.0%</td><td class="num">21.4%</td><td class="num">39.5%</td><td class="num">44.3%</td><td class="num score">28.98</td></tr>
+<tr data-search="appfolio appf"><th class="col-rank" scope="row">44</th><th class="col-company" scope="row" title="AppFolio">AppFolio</th><td>APPF</td><td class="num">$224.34</td><td class="num">$8.0B</td><td class="num">6.5×</td><td class="num">5.5×</td><td class="num">42.4%</td><td class="num">18.6%</td><td class="num">64.3%</td><td class="num">23.9%</td><td class="num">24.7%</td><td class="num">18.4%</td><td class="num">15.7%</td><td class="num">61.0%</td><td class="num score">28.32</td></tr>
+<tr data-search="paylocity pcty"><th class="col-rank" scope="row">45</th><th class="col-company" scope="row" title="Paylocity">Paylocity</th><td>PCTY</td><td class="num">$178.05</td><td class="num">$9.3B</td><td class="num">5.1×</td><td class="num">4.8×</td><td class="num">37.8%</td><td class="num">10.7%</td><td class="num">67.4%</td><td class="num">27.2%</td><td class="num">34.8%</td><td class="num">13.2%</td><td class="num">23.5%</td><td class="num">48.5%</td><td class="num score">28.10</td></tr>
+<tr data-search="digitalocean docn"><th class="col-rank" scope="row">46</th><th class="col-company" scope="row" title="DigitalOcean">DigitalOcean</th><td>DOCN</td><td class="num">$86.32</td><td class="num">$10.2B</td><td class="num">8.9×</td><td class="num">5.5×</td><td class="num">49.0%</td><td class="num">39.9%</td><td class="num">50.1%</td><td class="num">9.1%</td><td class="num">23.2%</td><td class="num">19.0%</td><td class="num">8.2%</td><td class="num">88.9%</td><td class="num score">28.08</td></tr>
+<tr data-search="pagerduty pd"><th class="col-rank" scope="row">47</th><th class="col-company" scope="row" title="PagerDuty">PagerDuty</th><td>PD</td><td class="num">$15.95</td><td class="num">$1.2B</td><td class="num">2.4×</td><td class="num">2.3×</td><td class="num">26.3%</td><td class="num">0.8%</td><td class="num">83.9%</td><td class="num">25.4%</td><td class="num">53.5%</td><td class="num">24.6%</td><td class="num">33.9%</td><td class="num">27.1%</td><td class="num score">27.63</td></tr>
+<tr data-search="asana asan"><th class="col-rank" scope="row">48</th><th class="col-company" scope="row" title="Asana">Asana</th><td>ASAN</td><td class="num">$9.71</td><td class="num">$2.2B</td><td class="num">2.5×</td><td class="num">2.3×</td><td class="num">24.2%</td><td class="num">9.9%</td><td class="num">86.0%</td><td class="num">14.3%</td><td class="num">67.2%</td><td class="num">35.6%</td><td class="num">47.7%</td><td class="num">34.1%</td><td class="num score">26.68</td></tr>
+<tr data-search="blackline bl"><th class="col-rank" scope="row">49</th><th class="col-company" scope="row" title="BlackLine">BlackLine</th><td>BL</td><td class="num">$29.53</td><td class="num">$1.7B</td><td class="num">2.4×</td><td class="num">2.2×</td><td class="num">31.5%</td><td class="num">8.5%</td><td class="num">75.7%</td><td class="num">23.0%</td><td class="num">52.3%</td><td class="num">16.1%</td><td class="num">35.4%</td><td class="num">39.9%</td><td class="num score">26.33</td></tr>
+<tr data-search="wix wix"><th class="col-rank" scope="row">50</th><th class="col-company" scope="row" title="Wix">Wix</th><td>WIX</td><td class="num">$67.17</td><td class="num">$2.8B</td><td class="num">1.7×</td><td class="num">1.5×</td><td class="num">28.6%</td><td class="num">12.9%</td><td class="num">67.8%</td><td class="num">15.7%</td><td class="num">41.8%</td><td class="num">33.4%</td><td class="num">33.0%</td><td class="num">41.4%</td><td class="num score">25.88</td></tr>
+<tr data-search="braze brze"><th class="col-rank" scope="row">51</th><th class="col-company" scope="row" title="Braze">Braze</th><td>BRZE</td><td class="num">$46.64</td><td class="num">$5.3B</td><td class="num">5.5×</td><td class="num">4.7×</td><td class="num">35.5%</td><td class="num">26.2%</td><td class="num">66.8%</td><td class="num">9.3%</td><td class="num">56.6%</td><td class="num">21.6%</td><td class="num">42.2%</td><td class="num">61.6%</td><td class="num score">25.40</td></tr>
+<tr data-search="q2 qtwo"><th class="col-rank" scope="row">52</th><th class="col-company" scope="row" title="Q2">Q2</th><td>QTWO</td><td class="num">$73.95</td><td class="num">$4.6B</td><td class="num">5.0×</td><td class="num">4.5×</td><td class="num">37.7%</td><td class="num">11.9%</td><td class="num">59.7%</td><td class="num">25.8%</td><td class="num">27.0%</td><td class="num">19.0%</td><td class="num">11.7%</td><td class="num">49.7%</td><td class="num score">25.28</td></tr>
+<tr data-search="servicetitan ttan"><th class="col-rank" scope="row">53</th><th class="col-company" scope="row" title="ServiceTitan">ServiceTitan</th><td>TTAN</td><td class="num">$82.61</td><td class="num">$8.0B</td><td class="num">6.4×</td><td class="num">5.7×</td><td class="num">32.3%</td><td class="num">20.9%</td><td class="num">71.5%</td><td class="num">11.4%</td><td class="num">50.7%</td><td class="num">32.5%</td><td class="num">28.2%</td><td class="num">53.3%</td><td class="num score">25.17</td></tr>
+<tr data-search="avepoint avpt"><th class="col-rank" scope="row">54</th><th class="col-company" scope="row" title="AvePoint">AvePoint</th><td>AVPT</td><td class="num">$16.55</td><td class="num">$3.5B</td><td class="num">5.9×</td><td class="num">4.9×</td><td class="num">37.9%</td><td class="num">19.5%</td><td class="num">72.2%</td><td class="num">18.4%</td><td class="num">51.2%</td><td class="num">12.2%</td><td class="num">35.6%</td><td class="num">57.4%</td><td class="num score">24.90</td></tr>
+<tr data-search="netskope ntsk"><th class="col-rank" scope="row">55</th><th class="col-company" scope="row" title="Netskope">Netskope</th><td>NTSK</td><td class="num">$21.75</td><td class="num">$8.9B</td><td class="num">9.7×</td><td class="num">8.0×</td><td class="num">21.2%</td><td class="num">29.2%</td><td class="num">73.9%</td><td class="num neg">-8.0%</td><td class="num">92.7%</td><td class="num">71.4%</td><td class="num">57.0%</td><td class="num">50.4%</td><td class="num score">24.42</td></tr>
+<tr data-search="sps commerce spsc"><th class="col-rank" scope="row">56</th><th class="col-company" scope="row" title="SPS Commerce">SPS Commerce</th><td>SPSC</td><td class="num">$81.30</td><td class="num">$2.9B</td><td class="num">3.4×</td><td class="num">3.2×</td><td class="num">29.7%</td><td class="num">4.1%</td><td class="num">71.1%</td><td class="num">25.6%</td><td class="num">39.8%</td><td class="num">8.7%</td><td class="num">22.3%</td><td class="num">33.8%</td><td class="num score">24.40</td></tr>
+<tr data-search="sentinelone s"><th class="col-rank" scope="row">57</th><th class="col-company" scope="row" title="SentinelOne">SentinelOne</th><td>S</td><td class="num">$22.20</td><td class="num">$7.7B</td><td class="num">6.1×</td><td class="num">5.1×</td><td class="num">25.4%</td><td class="num">20.6%</td><td class="num">72.1%</td><td class="num">4.8%</td><td class="num">65.4%</td><td class="num">33.2%</td><td class="num">47.2%</td><td class="num">46.0%</td><td class="num score">24.20</td></tr>
+<tr data-search="sailpoint sail"><th class="col-rank" scope="row">58</th><th class="col-company" scope="row" title="SailPoint">SailPoint</th><td>SAIL</td><td class="num">$20.79</td><td class="num">$11.9B</td><td class="num">9.4×</td><td class="num">7.9×</td><td class="num">31.2%</td><td class="num">16.8%</td><td class="num">66.8%</td><td class="num">14.4%</td><td class="num">65.3%</td><td class="num">19.9%</td><td class="num">50.6%</td><td class="num">48.1%</td><td class="num score">23.38</td></tr>
+<tr data-search="five9 fivn"><th class="col-rank" scope="row">59</th><th class="col-company" scope="row" title="Five9">Five9</th><td>FIVN</td><td class="num">$27.32</td><td class="num">$2.1B</td><td class="num">1.7×</td><td class="num">1.6×</td><td class="num">29.6%</td><td class="num">13.1%</td><td class="num">53.4%</td><td class="num">16.5%</td><td class="num">36.3%</td><td class="num">12.6%</td><td class="num">25.1%</td><td class="num">42.7%</td><td class="num score">23.00</td></tr>
+<tr data-search="fastly fsly"><th class="col-rank" scope="row">60</th><th class="col-company" scope="row" title="Fastly">Fastly</th><td>FSLY</td><td class="num">$16.62</td><td class="num">$2.7B</td><td class="num">3.6×</td><td class="num">3.1×</td><td class="num">27.7%</td><td class="num">20.2%</td><td class="num">63.3%</td><td class="num">7.5%</td><td class="num">48.1%</td><td class="num">23.4%</td><td class="num">30.5%</td><td class="num">47.9%</td><td class="num score">22.22</td></tr>
+<tr data-search="agilysys agys"><th class="col-rank" scope="row">61</th><th class="col-company" scope="row" title="Agilysys">Agilysys</th><td>AGYS</td><td class="num">$121.94</td><td class="num">$3.4B</td><td class="num">8.9×</td><td class="num">7.6×</td><td class="num">39.2%</td><td class="num">17.7%</td><td class="num">64.6%</td><td class="num">21.5%</td><td class="num">24.9%</td><td class="num">22.5%</td><td class="num">12.2%</td><td class="num">57.0%</td><td class="num score">21.75</td></tr>
+<tr data-search="alkami alkt"><th class="col-rank" scope="row">62</th><th class="col-company" scope="row" title="Alkami">Alkami</th><td>ALKT</td><td class="num">$13.98</td><td class="num">$1.5B</td><td class="num">3.3×</td><td class="num">2.9×</td><td class="num">29.5%</td><td class="num">19.4%</td><td class="num">57.5%</td><td class="num">10.0%</td><td class="num">36.9%</td><td class="num">24.7%</td><td class="num">15.8%</td><td class="num">48.9%</td><td class="num score">21.72</td></tr>
+<tr data-search="sprinklr cxm"><th class="col-rank" scope="row">63</th><th class="col-company" scope="row" title="Sprinklr">Sprinklr</th><td>CXM</td><td class="num">$6.80</td><td class="num">$1.6B</td><td class="num">1.4×</td><td class="num">1.3×</td><td class="num">15.7%</td><td class="num">0.8%</td><td class="num">65.1%</td><td class="num">14.9%</td><td class="num">49.0%</td><td class="num">11.2%</td><td class="num">33.4%</td><td class="num">16.5%</td><td class="num score">19.75</td></tr>
+<tr data-search="ncino ncno"><th class="col-rank" scope="row">64</th><th class="col-company" scope="row" title="nCino">nCino</th><td>NCNO</td><td class="num">$22.76</td><td class="num">$2.4B</td><td class="num">4.1×</td><td class="num">3.8×</td><td class="num">28.7%</td><td class="num">8.2%</td><td class="num">62.6%</td><td class="num">20.5%</td><td class="num">34.9%</td><td class="num">19.2%</td><td class="num">22.0%</td><td class="num">36.9%</td><td class="num score">19.38</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p id="empty" class="empty" hidden>No matching companies.</p>
+  <p class="note">Market cap is shown in billions of US dollars. Growth, margins, efficiency, and Rule of X are percentages. Score is the weighted ranking.</p>
+  <script>
+    const input = document.getElementById("q");
+    const rows = Array.from(document.querySelectorAll("#rows tr"));
+    const empty = document.getElementById("empty");
+    const count = document.getElementById("count");
+    input.addEventListener("input", () => {
+      const query = input.value.trim().toLowerCase();
+      let shown = 0;
+      for (const row of rows) {
+        const match = query.length === 0 || row.dataset.search.includes(query);
+        row.hidden = !match;
+        if (match) shown += 1;
+      }
+      empty.hidden = shown !== 0;
+      count.textContent = String(shown);
+    });
+  </script>
+</body>
+</html>
