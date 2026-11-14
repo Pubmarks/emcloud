@@ -1,6 +1,6 @@
 import csv
+import json
 from datetime import datetime, timezone
-from html import escape
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -36,73 +36,35 @@ def load_rows(path):
     return rows
 
 
-def format_value(kind, raw):
-    if kind in {"rank", "company", "text"}:
-        return escape(raw), ""
-    value = float(raw)
-    negative = " neg" if value < 0 else ""
-    if kind == "price":
-        return f"${value:,.2f}", negative
-    if kind == "cap":
-        return f"${value / 1000:,.1f}B", negative
-    if kind == "multiple":
-        return f"{value:,.1f}×", negative
-    if kind == "pct":
-        return f"{value * 100:,.1f}%", negative
-    if kind == "score":
-        return f"{value:,.2f}", negative
-    raise ValueError(f"Unknown column kind: {kind}")
+def json_for_script(value):
+    return json.dumps(value).replace("<", "\\u003c")
 
 
-def header_cells():
-    cells = []
-    for column in COLUMNS:
-        unit = escape(column["unit"]) if column["unit"] else "&nbsp;"
-        classes = []
-        if column["kind"] == "rank":
-            classes.append("col-rank")
-        elif column["kind"] == "company":
-            classes.append("col-company")
-        elif column["kind"] != "text":
-            classes.append("num")
-        class_attr = f' class="{" ".join(classes)}"' if classes else ""
-        cells.append(
-            f"<th{class_attr} scope=\"col\">"
-            f"<span>{escape(column['label'])}</span><small>{unit}</small></th>"
-        )
-    return "".join(cells)
-
-
-def render_row(row):
-    company = row["Company"]
-    symbol = row["Symbol"]
-    search = escape(f"{company} {symbol}".lower())
-    rank = int(float(row["Rank"]))
-    cells = []
-    for column in COLUMNS:
-        text, negative = format_value(column["kind"], row[column["key"]])
-        if column["kind"] == "rank":
-            top = " top" if rank <= 3 else ""
-            cells.append(f'<th class="col-rank{top}" scope="row">{text}</th>')
-        elif column["kind"] == "company":
-            cells.append(
-                f'<th class="col-company" scope="row" title="{escape(company)}">{text}</th>'
-            )
-        elif column["kind"] == "text":
-            cells.append(f"<td>{text}</td>")
-        else:
-            score = " score" if column["kind"] == "score" else ""
-            cells.append(f'<td class="num{negative}{score}">{text}</td>')
-    return f'<tr data-search="{search}">{"".join(cells)}</tr>'
+def json_rows(rows):
+    payload = []
+    for row in rows:
+        item = {}
+        for column in COLUMNS:
+            raw = row[column["key"]]
+            if column["kind"] in {"company", "text"}:
+                item[column["key"]] = raw
+            elif column["kind"] == "rank":
+                item[column["key"]] = int(float(raw))
+            else:
+                item[column["key"]] = float(raw)
+        payload.append(item)
+    return json_for_script(payload)
 
 
 def render_page(rows):
     now = datetime.now(timezone.utc)
     stamp = f"{now.day} {now.strftime('%b %Y')} · {now.strftime('%H:%M')} UTC"
-    count = len(rows)
-    return PAGE.replace("{{STAMP}}", stamp).replace("{{COUNT}}", str(count)).replace(
-        "{{HEADER}}", header_cells()
-    ).replace("{{ROWS}}", "\n".join(render_row(row) for row in rows))
+    return (
+        PAGE.replace("{{STAMP}}", stamp)
+        .replace("{{COUNT}}", str(len(rows)))
+        .replace("{{DATA}}", json_rows(rows))
+        .replace("{{COLUMNS}}", json_for_script(COLUMNS))
+    )
 
 
 PAGE = """<!DOCTYPE html>
@@ -116,6 +78,7 @@ PAGE = """<!DOCTYPE html>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,550;1,6..72,550&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@6.7.1/dist/css/tabulator.min.css" rel="stylesheet">
   <style>
     :root {
       --ink: #1b1714;
@@ -126,8 +89,6 @@ PAGE = """<!DOCTYPE html>
       --brass: #8d5a2b;
       --neg: #8f3a32;
       --hover: #e5f1e4;
-      --rank-w: 4.5rem;
-      --company-w: 13.75rem;
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; }
@@ -135,12 +96,20 @@ PAGE = """<!DOCTYPE html>
       margin: 0;
       display: flex;
       flex-direction: column;
-      min-height: 100dvh;
+      height: 100dvh;
+      overflow: hidden;
       background: var(--paper);
       color: var(--ink);
       font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
       font-size: 15px;
       line-height: 1.4;
+    }
+    .scroller {
+      flex: 1;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .mast {
       display: flex;
@@ -186,55 +155,38 @@ PAGE = """<!DOCTYPE html>
       color: var(--muted);
       font-size: 0.82rem;
     }
-    .sheet {
-      flex: 1;
-      min-height: 0;
+    .tabulator {
       margin: 0 1rem 1rem;
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
+      overflow: visible !important;
       background: var(--sheet);
       border: 1px solid #d5cec2;
       border-radius: 12px;
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--ink);
     }
-    table {
-      width: max-content;
-      min-width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-    }
-    caption {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-    th, td {
-      padding: 0.62rem 0.8rem;
-      text-align: left;
-      white-space: nowrap;
-      background: var(--sheet);
-      vertical-align: bottom;
-    }
-    thead th {
-      position: sticky;
+    .tabulator .tabulator-header {
+      position: sticky !important;
       top: 0;
-      z-index: 2;
-      padding-top: 0.75rem;
-      padding-bottom: 0.7rem;
+      z-index: 30;
       background: var(--ink);
       color: #f3eadc;
-      font-size: 0.78rem;
+      border-bottom: none;
       font-weight: 600;
-      letter-spacing: 0.01em;
     }
-    thead th span, thead th small { display: block; }
-    thead th small {
+    .tabulator .tabulator-header .tabulator-col {
+      background: var(--ink);
+      border-right: none;
+    }
+    .tabulator .tabulator-header .tabulator-col:hover {
+      background: #2a251f;
+    }
+    .tabulator .tabulator-header .tabulator-col .tabulator-col-content {
+      padding: 0.7rem 0.8rem;
+    }
+    .tabulator .tabulator-col-title { padding-right: 0.4rem; }
+    .th-label span, .th-label small { display: block; }
+    .th-label small {
       margin-top: 0.15rem;
       color: #b7aa9a;
       font-size: 0.68rem;
@@ -242,88 +194,231 @@ PAGE = """<!DOCTYPE html>
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
-    tbody th, tbody td { border-bottom: 1px solid var(--line); font-weight: 400; }
-    tbody tr:hover th, tbody tr:hover td { background: var(--hover); }
-    .col-rank, .col-company { position: sticky; z-index: 1; }
-    .col-rank { left: 0; width: var(--rank-w); min-width: var(--rank-w); max-width: var(--rank-w); }
-    .col-company { left: var(--rank-w); width: var(--company-w); min-width: var(--company-w); max-width: var(--company-w); }
-    thead .col-rank, thead .col-company { z-index: 3; }
-    tbody .col-company {
-      font-weight: 500;
+    .tabulator .tabulator-header .tabulator-col .tabulator-col-sorter .tabulator-arrow {
+      border-bottom-color: #8d8274;
+    }
+    .tabulator .tabulator-header .tabulator-col[aria-sort="ascending"] .tabulator-arrow {
+      border-bottom-color: #d7b48a;
+    }
+    .tabulator .tabulator-header .tabulator-col[aria-sort="descending"] .tabulator-arrow {
+      border-bottom-color: transparent;
+      border-top-color: #d7b48a;
+    }
+    .tabulator .tabulator-tableholder {
+      height: auto !important;
+      max-height: none !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      -webkit-overflow-scrolling: touch;
+      background: var(--sheet);
+    }
+    .tabulator .tabulator-table { background: var(--sheet); }
+    .tabulator-row {
+      background: var(--sheet);
+      border-bottom: 1px solid var(--line);
+    }
+    .tabulator-row.tabulator-row-even { background: var(--sheet); }
+    .tabulator-row:hover,
+    .tabulator-row:hover .tabulator-cell.tabulator-frozen { background: var(--hover); }
+    .tabulator .tabulator-cell {
+      border-right: none;
+      padding: 0.62rem 0.8rem;
+    }
+    .tabulator .tabulator-cell.num,
+    .tabulator .tabulator-cell.score {
+      font-variant-numeric: tabular-nums;
+    }
+    .tabulator .tabulator-cell.score { font-weight: 600; }
+    .tabulator .tabulator-cell[tabulator-field="Company"] { font-weight: 500; }
+    .tabulator .tabulator-cell.top { color: var(--brass); font-weight: 600; }
+    .tabulator .neg { color: var(--neg); }
+    .tabulator .tabulator-cell.tabulator-frozen,
+    .tabulator .tabulator-header .tabulator-col.tabulator-frozen {
+      background: var(--sheet);
+    }
+    .tabulator .tabulator-header .tabulator-col.tabulator-frozen { background: var(--ink); }
+    .tabulator .tabulator-header .tabulator-col.tabulator-frozen:hover { background: #2a251f; }
+    .tabulator .tabulator-frozen[tabulator-field="Company"] {
       box-shadow: 1px 0 0 var(--line), 12px 0 16px -14px rgba(27, 23, 20, 0.85);
     }
-    thead .col-company { box-shadow: 1px 0 0 #3a342e; }
-    .num { text-align: right; font-variant-numeric: tabular-nums; min-width: 7.5rem; }
-    .top { color: var(--brass); font-weight: 600; }
-    .score { font-weight: 600; }
-    .neg { color: var(--neg); }
-    .empty {
-      margin: 0 1rem 0.35rem;
-      color: var(--muted);
+    .tabulator .tabulator-header .tabulator-frozen[tabulator-field="Company"] {
+      box-shadow: 1px 0 0 #3a342e;
     }
+    .tabulator .tabulator-placeholder { color: var(--muted); }
+    .tabulator .tabulator-footer { display: none; }
     .note {
-      margin: 0 1rem 0.85rem;
+      position: sticky;
+      bottom: 0;
+      z-index: 40;
+      flex: none;
+      margin: 0;
+      padding: 0.75rem 1.25rem;
+      background: #efe8dc;
+      border-top: 1px solid #d5cec2;
       color: var(--muted);
       font-size: 0.82rem;
     }
     @media (max-width: 720px) {
-      :root { --rank-w: 3.25rem; --company-w: 9.25rem; }
       .mast { flex-direction: column; align-items: stretch; gap: 0.7rem; padding: 0.8rem 0.85rem 0.7rem; }
       .mast-side { align-items: stretch; gap: 0.35rem; }
       h1 { font-size: 1.65rem; }
       .deck { font-size: 0.92rem; }
       .updated, .count { margin: 0; }
       .filter input { width: 100%; }
-      .hint, .sheet, .empty, .note { margin-left: 0.5rem; margin-right: 0.5rem; }
-      .hint { padding-left: 0.25rem; padding-right: 0.25rem; }
-      th, td { padding: 0.55rem 0.7rem; }
-      .col-company { overflow: hidden; text-overflow: ellipsis; }
+      .hint { padding-left: 0.75rem; padding-right: 0.75rem; }
+      .tabulator { margin-left: 0.5rem; margin-right: 0.5rem; }
+      .tabulator .tabulator-header .tabulator-col .tabulator-col-content,
+      .tabulator .tabulator-cell { padding: 0.55rem 0.7rem; }
+      .tabulator .tabulator-cell[tabulator-field="Company"],
+      .tabulator .tabulator-col[tabulator-field="Company"] .tabulator-col-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .note { padding-left: 0.75rem; padding-right: 0.75rem; }
     }
   </style>
 </head>
 <body>
-  <header class="mast">
-    <div>
-      <p class="kicker">EMCLOUD</p>
-      <h1>Emerging cloud rankings</h1>
-      <p class="deck">BVP Nasdaq Emerging Cloud Index, weighted across efficiency, valuation, growth, margins, and scale.</p>
-    </div>
-    <div class="mast-side">
-      <p class="updated">Updated {{STAMP}}</p>
-      <p class="count"><span id="count">{{COUNT}}</span> companies</p>
-      <label class="filter">
-        <span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Filter by company or ticker</span>
-        <input id="q" type="search" placeholder="Filter company or ticker" autocomplete="off" enterkeyhint="search">
-      </label>
-    </div>
-  </header>
-  <p class="hint">Scroll sideways for every metric. Rank and company stay fixed.</p>
-  <div class="sheet" id="sheet">
-    <table>
-      <caption>Emerging cloud company rankings</caption>
-      <thead><tr>{{HEADER}}</tr></thead>
-      <tbody id="rows">
-{{ROWS}}
-      </tbody>
-    </table>
+  <div class="scroller" id="scroller">
+    <header class="mast">
+      <div>
+        <p class="kicker">EMCLOUD</p>
+        <h1>Emerging cloud rankings</h1>
+        <p class="deck">BVP Nasdaq Emerging Cloud Index, weighted across efficiency, valuation, growth, margins, and scale.</p>
+      </div>
+      <div class="mast-side">
+        <p class="updated">Updated {{STAMP}}</p>
+        <p class="count"><span id="count">{{COUNT}}</span> companies</p>
+        <label class="filter">
+          <span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Filter by company or ticker</span>
+          <input id="q" type="search" placeholder="Filter company or ticker" autocomplete="off" enterkeyhint="search">
+        </label>
+      </div>
+    </header>
+    <p class="hint">Tap a column heading to sort. Scroll sideways for every metric. Rank and company stay fixed.</p>
+    <div id="sheet"></div>
   </div>
-  <p id="empty" class="empty" hidden>No matching companies.</p>
-  <p class="note">Market cap is shown in billions of US dollars. Growth, margins, efficiency, and Rule of X are percentages. Score is the weighted ranking.</p>
+  <footer class="note">Market cap is shown in billions of US dollars. Growth, margins, efficiency, and Rule of X are percentages. Score is the weighted ranking.</footer>
+  <script id="rankings-columns" type="application/json">{{COLUMNS}}</script>
+  <script id="rankings-data" type="application/json">{{DATA}}</script>
+  <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@6.7.1/dist/js/tabulator.min.js"></script>
   <script>
-    const input = document.getElementById("q");
-    const rows = Array.from(document.querySelectorAll("#rows tr"));
-    const empty = document.getElementById("empty");
+    const columns = JSON.parse(document.getElementById("rankings-columns").textContent);
+    const data = JSON.parse(document.getElementById("rankings-data").textContent);
+    const oneDecimal = new Intl.NumberFormat("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const priceFormat = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+    const scoreFormat = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function label(value, className) {
+      const span = document.createElement("span");
+      if (className) span.className = className;
+      span.textContent = String(value);
+      return span;
+    }
+
+    function formatNumber(kind, value) {
+      if (kind === "price") return priceFormat.format(value);
+      if (kind === "cap") return "$" + oneDecimal.format(value / 1000) + "B";
+      if (kind === "multiple") return oneDecimal.format(value) + "\\u00d7";
+      if (kind === "pct") return oneDecimal.format(value * 100) + "%";
+      if (kind === "score") return scoreFormat.format(value);
+      return String(value);
+    }
+
+    function headerTitle(name, unit) {
+      return function () {
+        const wrap = document.createElement("span");
+        wrap.className = "th-label";
+        const title = document.createElement("span");
+        title.textContent = name;
+        const small = document.createElement("small");
+        small.textContent = unit || "\\u00a0";
+        wrap.append(title, small);
+        return wrap;
+      };
+    }
+
+    function widths() {
+      const narrow = window.matchMedia("(max-width: 720px)").matches;
+      return { rank: narrow ? 58 : 78, company: narrow ? 148 : 220 };
+    }
+
+    function buildColumns() {
+      const size = widths();
+      return columns.map((column) => {
+        const numeric = column.kind !== "rank" && column.kind !== "company" && column.kind !== "text";
+        const definition = {
+          title: column.label,
+          field: column.key,
+          titleFormatter: headerTitle(column.label, column.unit),
+          headerSort: true,
+          sorter: numeric || column.kind === "rank" ? "number" : "string",
+          hozAlign: numeric ? "right" : "left",
+          resizable: false,
+        };
+        if (column.kind === "rank") {
+          definition.frozen = true;
+          definition.width = size.rank;
+          definition.minWidth = size.rank;
+          definition.formatter = (cell) => {
+            const value = cell.getValue();
+            cell.getElement().classList.toggle("top", value <= 3);
+            return label(value);
+          };
+        } else if (column.kind === "company") {
+          definition.frozen = true;
+          definition.width = size.company;
+          definition.minWidth = size.company;
+          definition.formatter = (cell) => {
+            const value = cell.getValue();
+            cell.getElement().title = value;
+            return label(value);
+          };
+        } else if (numeric) {
+          definition.minWidth = 112;
+          definition.cssClass = column.kind === "score" ? "num score" : "num";
+          definition.formatter = (cell) => {
+            const value = cell.getValue();
+            return label(formatNumber(column.kind, value), value < 0 ? "neg" : "");
+          };
+        }
+        return definition;
+      });
+    }
+
     const count = document.getElementById("count");
-    input.addEventListener("input", () => {
-      const query = input.value.trim().toLowerCase();
-      let shown = 0;
-      for (const row of rows) {
-        const match = query.length === 0 || row.dataset.search.includes(query);
-        row.hidden = !match;
-        if (match) shown += 1;
+    const table = new Tabulator("#sheet", {
+      data,
+      index: "Symbol",
+      columns: buildColumns(),
+      layout: "fitData",
+      renderVertical: "basic",
+      renderHorizontal: "basic",
+      headerSortTristate: false,
+      selectableRows: false,
+      placeholder: "No matching companies.",
+      initialSort: [{ column: "Rank", dir: "asc" }],
+    });
+
+    function showCount(rows) {
+      count.textContent = String(rows.length);
+    }
+    table.on("dataLoaded", showCount);
+    table.on("dataFiltered", (_filters, rows) => showCount(rows));
+
+    document.getElementById("q").addEventListener("input", (event) => {
+      const query = event.target.value.trim().toLowerCase();
+      if (!query) {
+        table.clearFilter();
+        return;
       }
-      empty.hidden = shown !== 0;
-      count.textContent = String(shown);
+      table.setFilter((row) => (row.Company + " " + row.Symbol).toLowerCase().includes(query));
+    });
+
+    window.matchMedia("(max-width: 720px)").addEventListener("change", () => {
+      const size = widths();
+      table.getColumn("Rank").updateDefinition({ width: size.rank, minWidth: size.rank });
+      table.getColumn("Company").updateDefinition({ width: size.company, minWidth: size.company });
     });
   </script>
 </body>
