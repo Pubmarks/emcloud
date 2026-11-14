@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,550;1,6..72,550&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@6.7.1/dist/css/tabulator.min.css" rel="stylesheet">
   <style>
     :root {
       --ink: #1b1714;
@@ -19,8 +20,6 @@
       --brass: #8d5a2b;
       --neg: #8f3a32;
       --hover: #e5f1e4;
-      --rank-w: 4.5rem;
-      --company-w: 13.75rem;
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; }
@@ -28,12 +27,20 @@
       margin: 0;
       display: flex;
       flex-direction: column;
-      min-height: 100dvh;
+      height: 100dvh;
+      overflow: hidden;
       background: var(--paper);
       color: var(--ink);
       font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
       font-size: 15px;
       line-height: 1.4;
+    }
+    .scroller {
+      flex: 1;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .mast {
       display: flex;
@@ -79,55 +86,38 @@
       color: var(--muted);
       font-size: 0.82rem;
     }
-    .sheet {
-      flex: 1;
-      min-height: 0;
+    .tabulator {
       margin: 0 1rem 1rem;
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
+      overflow: visible !important;
       background: var(--sheet);
       border: 1px solid #d5cec2;
       border-radius: 12px;
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--ink);
     }
-    table {
-      width: max-content;
-      min-width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-    }
-    caption {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-    th, td {
-      padding: 0.62rem 0.8rem;
-      text-align: left;
-      white-space: nowrap;
-      background: var(--sheet);
-      vertical-align: bottom;
-    }
-    thead th {
-      position: sticky;
+    .tabulator .tabulator-header {
+      position: sticky !important;
       top: 0;
-      z-index: 2;
-      padding-top: 0.75rem;
-      padding-bottom: 0.7rem;
+      z-index: 30;
       background: var(--ink);
       color: #f3eadc;
-      font-size: 0.78rem;
+      border-bottom: none;
       font-weight: 600;
-      letter-spacing: 0.01em;
     }
-    thead th span, thead th small { display: block; }
-    thead th small {
+    .tabulator .tabulator-header .tabulator-col {
+      background: var(--ink);
+      border-right: none;
+    }
+    .tabulator .tabulator-header .tabulator-col:hover {
+      background: #2a251f;
+    }
+    .tabulator .tabulator-header .tabulator-col .tabulator-col-content {
+      padding: 0.7rem 0.8rem;
+    }
+    .tabulator .tabulator-col-title { padding-right: 0.4rem; }
+    .th-label span, .th-label small { display: block; }
+    .th-label small {
       margin-top: 0.15rem;
       color: #b7aa9a;
       font-size: 0.68rem;
@@ -135,151 +125,231 @@
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
-    tbody th, tbody td { border-bottom: 1px solid var(--line); font-weight: 400; }
-    tbody tr:hover th, tbody tr:hover td { background: var(--hover); }
-    .col-rank, .col-company { position: sticky; z-index: 1; }
-    .col-rank { left: 0; width: var(--rank-w); min-width: var(--rank-w); max-width: var(--rank-w); }
-    .col-company { left: var(--rank-w); width: var(--company-w); min-width: var(--company-w); max-width: var(--company-w); }
-    thead .col-rank, thead .col-company { z-index: 3; }
-    tbody .col-company {
-      font-weight: 500;
+    .tabulator .tabulator-header .tabulator-col .tabulator-col-sorter .tabulator-arrow {
+      border-bottom-color: #8d8274;
+    }
+    .tabulator .tabulator-header .tabulator-col[aria-sort="ascending"] .tabulator-arrow {
+      border-bottom-color: #d7b48a;
+    }
+    .tabulator .tabulator-header .tabulator-col[aria-sort="descending"] .tabulator-arrow {
+      border-bottom-color: transparent;
+      border-top-color: #d7b48a;
+    }
+    .tabulator .tabulator-tableholder {
+      height: auto !important;
+      max-height: none !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      -webkit-overflow-scrolling: touch;
+      background: var(--sheet);
+    }
+    .tabulator .tabulator-table { background: var(--sheet); }
+    .tabulator-row {
+      background: var(--sheet);
+      border-bottom: 1px solid var(--line);
+    }
+    .tabulator-row.tabulator-row-even { background: var(--sheet); }
+    .tabulator-row:hover,
+    .tabulator-row:hover .tabulator-cell.tabulator-frozen { background: var(--hover); }
+    .tabulator .tabulator-cell {
+      border-right: none;
+      padding: 0.62rem 0.8rem;
+    }
+    .tabulator .tabulator-cell.num,
+    .tabulator .tabulator-cell.score {
+      font-variant-numeric: tabular-nums;
+    }
+    .tabulator .tabulator-cell.score { font-weight: 600; }
+    .tabulator .tabulator-cell[tabulator-field="Company"] { font-weight: 500; }
+    .tabulator .tabulator-cell.top { color: var(--brass); font-weight: 600; }
+    .tabulator .neg { color: var(--neg); }
+    .tabulator .tabulator-cell.tabulator-frozen,
+    .tabulator .tabulator-header .tabulator-col.tabulator-frozen {
+      background: var(--sheet);
+    }
+    .tabulator .tabulator-header .tabulator-col.tabulator-frozen { background: var(--ink); }
+    .tabulator .tabulator-header .tabulator-col.tabulator-frozen:hover { background: #2a251f; }
+    .tabulator .tabulator-frozen[tabulator-field="Company"] {
       box-shadow: 1px 0 0 var(--line), 12px 0 16px -14px rgba(27, 23, 20, 0.85);
     }
-    thead .col-company { box-shadow: 1px 0 0 #3a342e; }
-    .num { text-align: right; font-variant-numeric: tabular-nums; min-width: 7.5rem; }
-    .top { color: var(--brass); font-weight: 600; }
-    .score { font-weight: 600; }
-    .neg { color: var(--neg); }
-    .empty {
-      margin: 0 1rem 0.35rem;
-      color: var(--muted);
+    .tabulator .tabulator-header .tabulator-frozen[tabulator-field="Company"] {
+      box-shadow: 1px 0 0 #3a342e;
     }
+    .tabulator .tabulator-placeholder { color: var(--muted); }
+    .tabulator .tabulator-footer { display: none; }
     .note {
-      margin: 0 1rem 0.85rem;
+      position: sticky;
+      bottom: 0;
+      z-index: 40;
+      flex: none;
+      margin: 0;
+      padding: 0.75rem 1.25rem;
+      background: #efe8dc;
+      border-top: 1px solid #d5cec2;
       color: var(--muted);
       font-size: 0.82rem;
     }
     @media (max-width: 720px) {
-      :root { --rank-w: 3.25rem; --company-w: 9.25rem; }
       .mast { flex-direction: column; align-items: stretch; gap: 0.7rem; padding: 0.8rem 0.85rem 0.7rem; }
       .mast-side { align-items: stretch; gap: 0.35rem; }
       h1 { font-size: 1.65rem; }
       .deck { font-size: 0.92rem; }
       .updated, .count { margin: 0; }
       .filter input { width: 100%; }
-      .hint, .sheet, .empty, .note { margin-left: 0.5rem; margin-right: 0.5rem; }
-      .hint { padding-left: 0.25rem; padding-right: 0.25rem; }
-      th, td { padding: 0.55rem 0.7rem; }
-      .col-company { overflow: hidden; text-overflow: ellipsis; }
+      .hint { padding-left: 0.75rem; padding-right: 0.75rem; }
+      .tabulator { margin-left: 0.5rem; margin-right: 0.5rem; }
+      .tabulator .tabulator-header .tabulator-col .tabulator-col-content,
+      .tabulator .tabulator-cell { padding: 0.55rem 0.7rem; }
+      .tabulator .tabulator-cell[tabulator-field="Company"],
+      .tabulator .tabulator-col[tabulator-field="Company"] .tabulator-col-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .note { padding-left: 0.75rem; padding-right: 0.75rem; }
     }
   </style>
 </head>
 <body>
-  <header class="mast">
-    <div>
-      <p class="kicker">EMCLOUD</p>
-      <h1>Emerging cloud rankings</h1>
-      <p class="deck">BVP Nasdaq Emerging Cloud Index, weighted across efficiency, valuation, growth, margins, and scale.</p>
-    </div>
-    <div class="mast-side">
-      <p class="updated">Updated 14 Nov 2026 · 17:03 UTC</p>
-      <p class="count"><span id="count">64</span> companies</p>
-      <label class="filter">
-        <span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Filter by company or ticker</span>
-        <input id="q" type="search" placeholder="Filter company or ticker" autocomplete="off" enterkeyhint="search">
-      </label>
-    </div>
-  </header>
-  <p class="hint">Scroll sideways for every metric. Rank and company stay fixed.</p>
-  <div class="sheet" id="sheet">
-    <table>
-      <caption>Emerging cloud company rankings</caption>
-      <thead><tr><th class="col-rank" scope="col"><span>Rank</span><small>&nbsp;</small></th><th class="col-company" scope="col"><span>Company</span><small>&nbsp;</small></th><th scope="col"><span>Ticker</span><small>&nbsp;</small></th><th class="num" scope="col"><span>Price</span><small>USD</small></th><th class="num" scope="col"><span>Market cap</span><small>USD bn</small></th><th class="num" scope="col"><span>EV / revenue</span><small>Annualized</small></th><th class="num" scope="col"><span>EV / revenue</span><small>Forward</small></th><th class="num" scope="col"><span>Efficiency</span><small>&nbsp;</small></th><th class="num" scope="col"><span>Revenue growth</span><small>&nbsp;</small></th><th class="num" scope="col"><span>Gross margin</span><small>&nbsp;</small></th><th class="num" scope="col"><span>FCF margin</span><small>LTM</small></th><th class="num" scope="col"><span>SG&amp;A margin</span><small>&nbsp;</small></th><th class="num" scope="col"><span>R&amp;D</span><small>of revenue</small></th><th class="num" scope="col"><span>Sales &amp; marketing</span><small>of revenue</small></th><th class="num" scope="col"><span>Rule of X</span><small>&nbsp;</small></th><th class="num" scope="col"><span>Score</span><small>Weighted</small></th></tr></thead>
-      <tbody id="rows">
-<tr data-search="adobe adbe"><th class="col-rank top" scope="row">1</th><th class="col-company" scope="row" title="Adobe">Adobe</th><td>ADBE</td><td class="num">$243.08</td><td class="num">$94.6B</td><td class="num">3.5×</td><td class="num">3.3×</td><td class="num">52.1%</td><td class="num">12.9%</td><td class="num">88.7%</td><td class="num">39.2%</td><td class="num">34.3%</td><td class="num">18.1%</td><td class="num">27.5%</td><td class="num">65.0%</td><td class="num score">47.10</td></tr>
-<tr data-search="palantir pltr"><th class="col-rank top" scope="row">2</th><th class="col-company" scope="row" title="Palantir">Palantir</th><td>PLTR</td><td class="num">$167.99</td><td class="num">$404.8B</td><td class="num">42.6×</td><td class="num">28.3×</td><td class="num">139.7%</td><td class="num">95.9%</td><td class="num">83.4%</td><td class="num">43.8%</td><td class="num">29.3%</td><td class="num">9.8%</td><td class="num">18.6%</td><td class="num">235.6%</td><td class="num score">46.10</td></tr>
-<tr data-search="atlassian team"><th class="col-rank top" scope="row">3</th><th class="col-company" scope="row" title="Atlassian">Atlassian</th><td>TEAM</td><td class="num">$149.99</td><td class="num">$37.8B</td><td class="num">5.3×</td><td class="num">4.7×</td><td class="num">47.2%</td><td class="num">23.7%</td><td class="num">85.2%</td><td class="num">23.5%</td><td class="num">32.8%</td><td class="num">47.7%</td><td class="num">23.6%</td><td class="num">70.9%</td><td class="num score">42.82</td></tr>
-<tr data-search="datadog ddog"><th class="col-rank" scope="row">4</th><th class="col-company" scope="row" title="Datadog">Datadog</th><td>DDOG</td><td class="num">$184.16</td><td class="num">$66.5B</td><td class="num">13.1×</td><td class="num">10.9×</td><td class="num">60.8%</td><td class="num">35.2%</td><td class="num">80.2%</td><td class="num">25.6%</td><td class="num">34.2%</td><td class="num">41.3%</td><td class="num">26.9%</td><td class="num">95.9%</td><td class="num score">42.38</td></tr>
-<tr data-search="palo alto networks panw"><th class="col-rank" scope="row">5</th><th class="col-company" scope="row" title="Palo Alto Networks">Palo Alto Networks</th><td>PANW</td><td class="num">$322.24</td><td class="num">$263.2B</td><td class="num">19.3×</td><td class="num">16.8×</td><td class="num">64.6%</td><td class="num">34.5%</td><td class="num">67.6%</td><td class="num">30.2%</td><td class="num">41.1%</td><td class="num">22.2%</td><td class="num">33.6%</td><td class="num">99.1%</td><td class="num score">41.65</td></tr>
-<tr data-search="salesforce crm"><th class="col-rank" scope="row">6</th><th class="col-company" scope="row" title="Salesforce">Salesforce</th><td>CRM</td><td class="num">$217.84</td><td class="num">$179.3B</td><td class="num">4.6×</td><td class="num">4.2×</td><td class="num">44.2%</td><td class="num">10.8%</td><td class="num">76.7%</td><td class="num">33.4%</td><td class="num">41.3%</td><td class="num">14.5%</td><td class="num">34.4%</td><td class="num">55.1%</td><td class="num score">41.58</td></tr>
-<tr data-search="nutanix ntnx"><th class="col-rank" scope="row">7</th><th class="col-company" scope="row" title="Nutanix">Nutanix</th><td>NTNX</td><td class="num">$60.38</td><td class="num">$16.3B</td><td class="num">5.1×</td><td class="num">4.6×</td><td class="num">43.7%</td><td class="num">15.9%</td><td class="num">86.5%</td><td class="num">27.8%</td><td class="num">48.8%</td><td class="num">27.5%</td><td class="num">39.7%</td><td class="num">59.5%</td><td class="num score">41.42</td></tr>
-<tr data-search="hubspot hubs"><th class="col-rank" scope="row">8</th><th class="col-company" scope="row" title="HubSpot">HubSpot</th><td>HUBS</td><td class="num">$217.25</td><td class="num">$10.6B</td><td class="num">2.5×</td><td class="num">2.3×</td><td class="num">39.3%</td><td class="num">17.1%</td><td class="num">82.6%</td><td class="num">22.2%</td><td class="num">52.3%</td><td class="num">25.2%</td><td class="num">43.0%</td><td class="num">56.3%</td><td class="num score">40.53</td></tr>
-<tr data-search="crowdstrike crwd"><th class="col-rank" scope="row">9</th><th class="col-company" scope="row" title="Crowdstrike">Crowdstrike</th><td>CRWD</td><td class="num">$226.61</td><td class="num">$232.5B</td><td class="num">38.8×</td><td class="num">31.8×</td><td class="num">53.2%</td><td class="num">25.8%</td><td class="num">74.6%</td><td class="num">27.3%</td><td class="num">48.7%</td><td class="num">29.0%</td><td class="num">36.0%</td><td class="num">79.0%</td><td class="num score">40.10</td></tr>
-<tr data-search="servicenow now"><th class="col-rank" scope="row">10</th><th class="col-company" scope="row" title="ServiceNow">ServiceNow</th><td>NOW</td><td class="num">$102.25</td><td class="num">$106.1B</td><td class="num">6.6×</td><td class="num">5.5×</td><td class="num">49.4%</td><td class="num">20.5%</td><td class="num">70.5%</td><td class="num">28.9%</td><td class="num">39.2%</td><td class="num">21.1%</td><td class="num">32.5%</td><td class="num">70.0%</td><td class="num score">39.93</td></tr>
-<tr data-search="jfrog frog"><th class="col-rank" scope="row">11</th><th class="col-company" scope="row" title="JFrog">JFrog</th><td>FROG</td><td class="num">$113.60</td><td class="num">$14.2B</td><td class="num">18.7×</td><td class="num">15.9×</td><td class="num">59.8%</td><td class="num">30.9%</td><td class="num">79.6%</td><td class="num">28.9%</td><td class="num">52.3%</td><td class="num">32.9%</td><td class="num">37.3%</td><td class="num">90.7%</td><td class="num score">39.75</td></tr>
-<tr data-search="docusign docu"><th class="col-rank" scope="row">12</th><th class="col-company" scope="row" title="DocuSign">DocuSign</th><td>DOCU</td><td class="num">$80.76</td><td class="num">$15.1B</td><td class="num">4.1×</td><td class="num">3.8×</td><td class="num">43.6%</td><td class="num">9.4%</td><td class="num">79.8%</td><td class="num">34.2%</td><td class="num">47.9%</td><td class="num">19.6%</td><td class="num">36.1%</td><td class="num">53.0%</td><td class="num score">39.28</td></tr>
-<tr data-search="veeva systems veev"><th class="col-rank" scope="row">13</th><th class="col-company" scope="row" title="Veeva Systems">Veeva Systems</th><td>VEEV</td><td class="num">$301.53</td><td class="num">$48.8B</td><td class="num">11.2×</td><td class="num">10.1×</td><td class="num">61.8%</td><td class="num">17.6%</td><td class="num">75.0%</td><td class="num">44.1%</td><td class="num">21.3%</td><td class="num">23.8%</td><td class="num">13.3%</td><td class="num">79.4%</td><td class="num score">39.15</td></tr>
-<tr data-search="figma fig"><th class="col-rank" scope="row">14</th><th class="col-company" scope="row" title="Figma">Figma</th><td>FIG</td><td class="num">$19.45</td><td class="num">$10.4B</td><td class="num">5.6×</td><td class="num">4.6×</td><td class="num">57.1%</td><td class="num">42.8%</td><td class="num">80.3%</td><td class="num">14.3%</td><td class="num">69.1%</td><td class="num">52.8%</td><td class="num">39.0%</td><td class="num">99.9%</td><td class="num score">38.80</td></tr>
-<tr data-search="zscaler zs"><th class="col-rank" scope="row">15</th><th class="col-company" scope="row" title="Zscaler">Zscaler</th><td>ZS</td><td class="num">$192.47</td><td class="num">$31.4B</td><td class="num">8.3×</td><td class="num">7.1×</td><td class="num">48.6%</td><td class="num">24.9%</td><td class="num">76.8%</td><td class="num">23.7%</td><td class="num">53.1%</td><td class="num">26.7%</td><td class="num">44.1%</td><td class="num">73.5%</td><td class="num score">38.70</td></tr>
-<tr data-search="workday wday"><th class="col-rank" scope="row">16</th><th class="col-company" scope="row" title="Workday">Workday</th><td>WDAY</td><td class="num">$196.45</td><td class="num">$47.3B</td><td class="num">4.5×</td><td class="num">4.1×</td><td class="num">39.7%</td><td class="num">12.8%</td><td class="num">75.4%</td><td class="num">26.8%</td><td class="num">36.1%</td><td class="num">27.7%</td><td class="num">27.0%</td><td class="num">52.5%</td><td class="num score">38.22</td></tr>
-<tr data-search="mongodb mdb"><th class="col-rank" scope="row">17</th><th class="col-company" scope="row" title="MongoDB">MongoDB</th><td>MDB</td><td class="num">$334.20</td><td class="num">$26.9B</td><td class="num">8.0×</td><td class="num">6.8×</td><td class="num">51.8%</td><td class="num">30.5%</td><td class="num">73.8%</td><td class="num">21.3%</td><td class="num">45.1%</td><td class="num">28.0%</td><td class="num">35.3%</td><td class="num">82.3%</td><td class="num score">37.60</td></tr>
-<tr data-search="dynatrace dt"><th class="col-rank" scope="row">18</th><th class="col-company" scope="row" title="Dynatrace">Dynatrace</th><td>DT</td><td class="num">$44.80</td><td class="num">$12.9B</td><td class="num">5.3×</td><td class="num">4.6×</td><td class="num">42.4%</td><td class="num">17.4%</td><td class="num">81.0%</td><td class="num">24.9%</td><td class="num">43.7%</td><td class="num">23.8%</td><td class="num">33.0%</td><td class="num">59.8%</td><td class="num score">37.28</td></tr>
-<tr data-search="snowflake snow"><th class="col-rank" scope="row">19</th><th class="col-company" scope="row" title="Snowflake">Snowflake</th><td>SNOW</td><td class="num">$291.00</td><td class="num">$102.6B</td><td class="num">16.3×</td><td class="num">12.7×</td><td class="num">54.4%</td><td class="num">35.1%</td><td class="num">67.0%</td><td class="num">19.3%</td><td class="num">50.7%</td><td class="num">38.8%</td><td class="num">42.4%</td><td class="num">89.5%</td><td class="num score">37.08</td></tr>
-<tr data-search="rubrik rbrk"><th class="col-rank" scope="row">20</th><th class="col-company" scope="row" title="Rubrik">Rubrik</th><td>RBRK</td><td class="num">$109.88</td><td class="num">$22.8B</td><td class="num">13.0×</td><td class="num">10.9×</td><td class="num">55.7%</td><td class="num">37.9%</td><td class="num">78.4%</td><td class="num">17.8%</td><td class="num">69.9%</td><td class="num">29.7%</td><td class="num">56.3%</td><td class="num">93.6%</td><td class="num score">37.05</td></tr>
-<tr data-search="cellebrite clbt"><th class="col-rank" scope="row">21</th><th class="col-company" scope="row" title="Cellebrite">Cellebrite</th><td>CLBT</td><td class="num">$11.54</td><td class="num">$2.9B</td><td class="num">3.9×</td><td class="num">3.6×</td><td class="num">46.1%</td><td class="num">18.2%</td><td class="num">81.2%</td><td class="num">27.9%</td><td class="num">44.7%</td><td class="num">25.7%</td><td class="num">30.2%</td><td class="num">64.3%</td><td class="num score">36.78</td></tr>
-<tr data-search="bill.com bill"><th class="col-rank" scope="row">22</th><th class="col-company" scope="row" title="Bill.com">Bill.com</th><td>BILL</td><td class="num">$54.48</td><td class="num">$4.7B</td><td class="num">3.5×</td><td class="num">3.2×</td><td class="num">41.7%</td><td class="num">12.5%</td><td class="num">80.5%</td><td class="num">29.2%</td><td class="num">52.8%</td><td class="num">17.5%</td><td class="num">39.3%</td><td class="num">54.2%</td><td class="num score">35.92</td></tr>
-<tr data-search="freshworks frsh"><th class="col-rank" scope="row">23</th><th class="col-company" scope="row" title="Freshworks">Freshworks</th><td>FRSH</td><td class="num">$12.66</td><td class="num">$3.3B</td><td class="num">2.7×</td><td class="num">2.4×</td><td class="num">39.2%</td><td class="num">14.1%</td><td class="num">85.3%</td><td class="num">25.2%</td><td class="num">57.9%</td><td class="num">19.2%</td><td class="num">45.7%</td><td class="num">53.3%</td><td class="num score">35.63</td></tr>
-<tr data-search="paycom payc"><th class="col-rank" scope="row">24</th><th class="col-company" scope="row" title="Paycom">Paycom</th><td>PAYC</td><td class="num">$248.86</td><td class="num">$11.0B</td><td class="num">5.4×</td><td class="num">5.0×</td><td class="num">40.5%</td><td class="num">10.2%</td><td class="num">88.5%</td><td class="num">30.3%</td><td class="num">35.1%</td><td class="num">10.7%</td><td class="num">22.8%</td><td class="num">50.8%</td><td class="num score">34.95</td></tr>
-<tr data-search="monday.com mndy"><th class="col-rank" scope="row">25</th><th class="col-company" scope="row" title="Monday.com">Monday.com</th><td>MNDY</td><td class="num">$78.00</td><td class="num">$3.3B</td><td class="num">1.6×</td><td class="num">1.4×</td><td class="num">33.9%</td><td class="num">19.2%</td><td class="num">88.0%</td><td class="num">14.8%</td><td class="num">57.4%</td><td class="num">25.4%</td><td class="num">45.4%</td><td class="num">53.1%</td><td class="num score">34.75</td></tr>
-<tr data-search="zeta zeta"><th class="col-rank" scope="row">26</th><th class="col-company" scope="row" title="Zeta">Zeta</th><td>ZETA</td><td class="num">$36.65</td><td class="num">$9.4B</td><td class="num">4.7×</td><td class="num">4.0×</td><td class="num">59.3%</td><td class="num">46.1%</td><td class="num">60.3%</td><td class="num">13.2%</td><td class="num">40.2%</td><td class="num">9.2%</td><td class="num">23.7%</td><td class="num">105.4%</td><td class="num score">34.45</td></tr>
-<tr data-search="gitlab gtlb"><th class="col-rank" scope="row">27</th><th class="col-company" scope="row" title="Gitlab">Gitlab</th><td>GTLB</td><td class="num">$47.73</td><td class="num">$8.0B</td><td class="num">5.8×</td><td class="num">5.1×</td><td class="num">40.0%</td><td class="num">21.3%</td><td class="num">84.5%</td><td class="num">18.7%</td><td class="num">64.0%</td><td class="num">27.9%</td><td class="num">43.9%</td><td class="num">61.3%</td><td class="num score">34.10</td></tr>
-<tr data-search="klaviyo kvyo"><th class="col-rank" scope="row">28</th><th class="col-company" scope="row" title="Klaviyo">Klaviyo</th><td>KVYO</td><td class="num">$22.13</td><td class="num">$6.2B</td><td class="num">3.7×</td><td class="num">3.1×</td><td class="num">40.4%</td><td class="num">24.6%</td><td class="num">74.2%</td><td class="num">15.8%</td><td class="num">51.3%</td><td class="num">23.3%</td><td class="num">37.2%</td><td class="num">64.9%</td><td class="num score">34.08</td></tr>
-<tr data-search="okta okta"><th class="col-rank" scope="row">29</th><th class="col-company" scope="row" title="Okta">Okta</th><td>OKTA</td><td class="num">$182.87</td><td class="num">$32.0B</td><td class="num">9.2×</td><td class="num">8.4×</td><td class="num">41.0%</td><td class="num">10.6%</td><td class="num">79.6%</td><td class="num">30.4%</td><td class="num">49.3%</td><td class="num">21.2%</td><td class="num">35.3%</td><td class="num">51.6%</td><td class="num score">34.05</td></tr>
-<tr data-search="workiva wk"><th class="col-rank" scope="row">30</th><th class="col-company" scope="row" title="Workiva">Workiva</th><td>WK</td><td class="num">$68.16</td><td class="num">$3.7B</td><td class="num">3.4×</td><td class="num">3.0×</td><td class="num">38.5%</td><td class="num">17.3%</td><td class="num">81.1%</td><td class="num">21.2%</td><td class="num">53.2%</td><td class="num">22.2%</td><td class="num">42.6%</td><td class="num">55.8%</td><td class="num score">33.83</td></tr>
-<tr data-search="uipath path"><th class="col-rank" scope="row">31</th><th class="col-company" scope="row" title="UiPath">UiPath</th><td>PATH</td><td class="num">$13.27</td><td class="num">$6.9B</td><td class="num">3.4×</td><td class="num">3.1×</td><td class="num">35.5%</td><td class="num">13.4%</td><td class="num">80.4%</td><td class="num">22.1%</td><td class="num">51.6%</td><td class="num">21.3%</td><td class="num">39.8%</td><td class="num">48.9%</td><td class="num score">33.78</td></tr>
-<tr data-search="cloudflare net"><th class="col-rank" scope="row">32</th><th class="col-company" scope="row" title="Cloudflare">Cloudflare</th><td>NET</td><td class="num">$305.81</td><td class="num">$109.6B</td><td class="num">34.9×</td><td class="num">26.8×</td><td class="num">50.5%</td><td class="num">39.2%</td><td class="num">71.2%</td><td class="num">11.3%</td><td class="num">57.1%</td><td class="num">22.7%</td><td class="num">41.6%</td><td class="num">89.7%</td><td class="num score">33.62</td></tr>
-<tr data-search="qualys qlys"><th class="col-rank" scope="row">33</th><th class="col-company" scope="row" title="Qualys">Qualys</th><td>QLYS</td><td class="num">$172.94</td><td class="num">$6.0B</td><td class="num">7.0×</td><td class="num">6.5×</td><td class="num">53.8%</td><td class="num">10.7%</td><td class="num">83.3%</td><td class="num">43.1%</td><td class="num">32.4%</td><td class="num">16.5%</td><td class="num">22.3%</td><td class="num">64.5%</td><td class="num score">32.92</td></tr>
-<tr data-search="shopify shop"><th class="col-rank" scope="row">34</th><th class="col-company" scope="row" title="Shopify">Shopify</th><td>SHOP</td><td class="num">$147.09</td><td class="num">$189.2B</td><td class="num">12.3×</td><td class="num">9.8×</td><td class="num">49.4%</td><td class="num">31.6%</td><td class="num">47.6%</td><td class="num">17.8%</td><td class="num">16.9%</td><td class="num">12.4%</td><td class="num">13.3%</td><td class="num">80.9%</td><td class="num score">32.55</td></tr>
-<tr data-search="twilio twlo"><th class="col-rank" scope="row">35</th><th class="col-company" scope="row" title="Twilio">Twilio</th><td>TWLO</td><td class="num">$211.21</td><td class="num">$32.7B</td><td class="num">4.9×</td><td class="num">4.5×</td><td class="num">38.7%</td><td class="num">19.9%</td><td class="num">48.8%</td><td class="num">18.8%</td><td class="num">22.5%</td><td class="num">18.5%</td><td class="num">14.8%</td><td class="num">58.7%</td><td class="num score">32.40</td></tr>
-<tr data-search="samsara iot"><th class="col-rank" scope="row">36</th><th class="col-company" scope="row" title="Samsara">Samsara</th><td>IOT</td><td class="num">$41.36</td><td class="num">$24.2B</td><td class="num">11.3×</td><td class="num">9.5×</td><td class="num">42.4%</td><td class="num">29.9%</td><td class="num">77.3%</td><td class="num">12.6%</td><td class="num">55.0%</td><td class="num">20.3%</td><td class="num">41.4%</td><td class="num">72.3%</td><td class="num score">32.12</td></tr>
-<tr data-search="procore pcor"><th class="col-rank" scope="row">37</th><th class="col-company" scope="row" title="Procore">Procore</th><td>PCOR</td><td class="num">$77.62</td><td class="num">$11.6B</td><td class="num">7.5×</td><td class="num">6.4×</td><td class="num">38.2%</td><td class="num">18.7%</td><td class="num">80.6%</td><td class="num">19.5%</td><td class="num">56.4%</td><td class="num">24.5%</td><td class="num">39.8%</td><td class="num">57.0%</td><td class="num score">31.80</td></tr>
-<tr data-search="toast tost"><th class="col-rank" scope="row">38</th><th class="col-company" scope="row" title="Toast">Toast</th><td>TOST</td><td class="num">$34.68</td><td class="num">$20.1B</td><td class="num">2.3×</td><td class="num">2.0×</td><td class="num">28.9%</td><td class="num">21.3%</td><td class="num">27.5%</td><td class="num">7.6%</td><td class="num">14.0%</td><td class="num">5.7%</td><td class="num">9.0%</td><td class="num">50.2%</td><td class="num score">30.93</td></tr>
-<tr data-search="elastic estc"><th class="col-rank" scope="row">39</th><th class="col-company" scope="row" title="Elastic">Elastic</th><td>ESTC</td><td class="num">$88.15</td><td class="num">$9.3B</td><td class="num">4.4×</td><td class="num">3.9×</td><td class="num">33.4%</td><td class="num">15.1%</td><td class="num">74.6%</td><td class="num">18.3%</td><td class="num">51.4%</td><td class="num">25.0%</td><td class="num">40.6%</td><td class="num">48.5%</td><td class="num score">30.60</td></tr>
-<tr data-search="ringcentral rng"><th class="col-rank" scope="row">40</th><th class="col-company" scope="row" title="Ringcentral">Ringcentral</th><td>RNG</td><td class="num">$75.39</td><td class="num">$6.4B</td><td class="num">2.7×</td><td class="num">2.6×</td><td class="num">30.5%</td><td class="num">5.9%</td><td class="num">73.2%</td><td class="num">24.7%</td><td class="num">51.3%</td><td class="num">12.9%</td><td class="num">43.1%</td><td class="num">36.4%</td><td class="num score">29.98</td></tr>
-<tr data-search="intapp inta"><th class="col-rank" scope="row">41</th><th class="col-company" scope="row" title="Intapp">Intapp</th><td>INTA</td><td class="num">$46.16</td><td class="num">$3.5B</td><td class="num">5.3×</td><td class="num">4.7×</td><td class="num">40.7%</td><td class="num">16.0%</td><td class="num">77.9%</td><td class="num">24.7%</td><td class="num">52.8%</td><td class="num">26.6%</td><td class="num">34.7%</td><td class="num">56.7%</td><td class="num score">29.92</td></tr>
-<tr data-search="waystar way"><th class="col-rank" scope="row">42</th><th class="col-company" scope="row" title="Waystar">Waystar</th><td>WAY</td><td class="num">$27.99</td><td class="num">$5.4B</td><td class="num">5.1×</td><td class="num">4.6×</td><td class="num">41.5%</td><td class="num">21.2%</td><td class="num">69.5%</td><td class="num">20.3%</td><td class="num">27.3%</td><td class="num">5.9%</td><td class="num">15.6%</td><td class="num">62.7%</td><td class="num score">29.40</td></tr>
-<tr data-search="tenable tenb"><th class="col-rank" scope="row">43</th><th class="col-company" scope="row" title="Tenable">Tenable</th><td>TENB</td><td class="num">$40.76</td><td class="num">$4.3B</td><td class="num">4.2×</td><td class="num">3.9×</td><td class="num">34.9%</td><td class="num">9.5%</td><td class="num">77.8%</td><td class="num">25.4%</td><td class="num">51.0%</td><td class="num">21.4%</td><td class="num">39.5%</td><td class="num">44.3%</td><td class="num score">28.98</td></tr>
-<tr data-search="appfolio appf"><th class="col-rank" scope="row">44</th><th class="col-company" scope="row" title="AppFolio">AppFolio</th><td>APPF</td><td class="num">$224.34</td><td class="num">$8.0B</td><td class="num">6.5×</td><td class="num">5.5×</td><td class="num">42.4%</td><td class="num">18.6%</td><td class="num">64.3%</td><td class="num">23.9%</td><td class="num">24.7%</td><td class="num">18.4%</td><td class="num">15.7%</td><td class="num">61.0%</td><td class="num score">28.32</td></tr>
-<tr data-search="paylocity pcty"><th class="col-rank" scope="row">45</th><th class="col-company" scope="row" title="Paylocity">Paylocity</th><td>PCTY</td><td class="num">$178.05</td><td class="num">$9.3B</td><td class="num">5.1×</td><td class="num">4.8×</td><td class="num">37.8%</td><td class="num">10.7%</td><td class="num">67.4%</td><td class="num">27.2%</td><td class="num">34.8%</td><td class="num">13.2%</td><td class="num">23.5%</td><td class="num">48.5%</td><td class="num score">28.10</td></tr>
-<tr data-search="digitalocean docn"><th class="col-rank" scope="row">46</th><th class="col-company" scope="row" title="DigitalOcean">DigitalOcean</th><td>DOCN</td><td class="num">$86.32</td><td class="num">$10.2B</td><td class="num">8.9×</td><td class="num">5.5×</td><td class="num">49.0%</td><td class="num">39.9%</td><td class="num">50.1%</td><td class="num">9.1%</td><td class="num">23.2%</td><td class="num">19.0%</td><td class="num">8.2%</td><td class="num">88.9%</td><td class="num score">28.08</td></tr>
-<tr data-search="pagerduty pd"><th class="col-rank" scope="row">47</th><th class="col-company" scope="row" title="PagerDuty">PagerDuty</th><td>PD</td><td class="num">$15.95</td><td class="num">$1.2B</td><td class="num">2.4×</td><td class="num">2.3×</td><td class="num">26.3%</td><td class="num">0.8%</td><td class="num">83.9%</td><td class="num">25.4%</td><td class="num">53.5%</td><td class="num">24.6%</td><td class="num">33.9%</td><td class="num">27.1%</td><td class="num score">27.63</td></tr>
-<tr data-search="asana asan"><th class="col-rank" scope="row">48</th><th class="col-company" scope="row" title="Asana">Asana</th><td>ASAN</td><td class="num">$9.71</td><td class="num">$2.2B</td><td class="num">2.5×</td><td class="num">2.3×</td><td class="num">24.2%</td><td class="num">9.9%</td><td class="num">86.0%</td><td class="num">14.3%</td><td class="num">67.2%</td><td class="num">35.6%</td><td class="num">47.7%</td><td class="num">34.1%</td><td class="num score">26.68</td></tr>
-<tr data-search="blackline bl"><th class="col-rank" scope="row">49</th><th class="col-company" scope="row" title="BlackLine">BlackLine</th><td>BL</td><td class="num">$29.53</td><td class="num">$1.7B</td><td class="num">2.4×</td><td class="num">2.2×</td><td class="num">31.5%</td><td class="num">8.5%</td><td class="num">75.7%</td><td class="num">23.0%</td><td class="num">52.3%</td><td class="num">16.1%</td><td class="num">35.4%</td><td class="num">39.9%</td><td class="num score">26.33</td></tr>
-<tr data-search="wix wix"><th class="col-rank" scope="row">50</th><th class="col-company" scope="row" title="Wix">Wix</th><td>WIX</td><td class="num">$67.17</td><td class="num">$2.8B</td><td class="num">1.7×</td><td class="num">1.5×</td><td class="num">28.6%</td><td class="num">12.9%</td><td class="num">67.8%</td><td class="num">15.7%</td><td class="num">41.8%</td><td class="num">33.4%</td><td class="num">33.0%</td><td class="num">41.4%</td><td class="num score">25.88</td></tr>
-<tr data-search="braze brze"><th class="col-rank" scope="row">51</th><th class="col-company" scope="row" title="Braze">Braze</th><td>BRZE</td><td class="num">$46.64</td><td class="num">$5.3B</td><td class="num">5.5×</td><td class="num">4.7×</td><td class="num">35.5%</td><td class="num">26.2%</td><td class="num">66.8%</td><td class="num">9.3%</td><td class="num">56.6%</td><td class="num">21.6%</td><td class="num">42.2%</td><td class="num">61.6%</td><td class="num score">25.40</td></tr>
-<tr data-search="q2 qtwo"><th class="col-rank" scope="row">52</th><th class="col-company" scope="row" title="Q2">Q2</th><td>QTWO</td><td class="num">$73.95</td><td class="num">$4.6B</td><td class="num">5.0×</td><td class="num">4.5×</td><td class="num">37.7%</td><td class="num">11.9%</td><td class="num">59.7%</td><td class="num">25.8%</td><td class="num">27.0%</td><td class="num">19.0%</td><td class="num">11.7%</td><td class="num">49.7%</td><td class="num score">25.28</td></tr>
-<tr data-search="servicetitan ttan"><th class="col-rank" scope="row">53</th><th class="col-company" scope="row" title="ServiceTitan">ServiceTitan</th><td>TTAN</td><td class="num">$82.61</td><td class="num">$8.0B</td><td class="num">6.4×</td><td class="num">5.7×</td><td class="num">32.3%</td><td class="num">20.9%</td><td class="num">71.5%</td><td class="num">11.4%</td><td class="num">50.7%</td><td class="num">32.5%</td><td class="num">28.2%</td><td class="num">53.3%</td><td class="num score">25.17</td></tr>
-<tr data-search="avepoint avpt"><th class="col-rank" scope="row">54</th><th class="col-company" scope="row" title="AvePoint">AvePoint</th><td>AVPT</td><td class="num">$16.55</td><td class="num">$3.5B</td><td class="num">5.9×</td><td class="num">4.9×</td><td class="num">37.9%</td><td class="num">19.5%</td><td class="num">72.2%</td><td class="num">18.4%</td><td class="num">51.2%</td><td class="num">12.2%</td><td class="num">35.6%</td><td class="num">57.4%</td><td class="num score">24.90</td></tr>
-<tr data-search="netskope ntsk"><th class="col-rank" scope="row">55</th><th class="col-company" scope="row" title="Netskope">Netskope</th><td>NTSK</td><td class="num">$21.75</td><td class="num">$8.9B</td><td class="num">9.7×</td><td class="num">8.0×</td><td class="num">21.2%</td><td class="num">29.2%</td><td class="num">73.9%</td><td class="num neg">-8.0%</td><td class="num">92.7%</td><td class="num">71.4%</td><td class="num">57.0%</td><td class="num">50.4%</td><td class="num score">24.42</td></tr>
-<tr data-search="sps commerce spsc"><th class="col-rank" scope="row">56</th><th class="col-company" scope="row" title="SPS Commerce">SPS Commerce</th><td>SPSC</td><td class="num">$81.30</td><td class="num">$2.9B</td><td class="num">3.4×</td><td class="num">3.2×</td><td class="num">29.7%</td><td class="num">4.1%</td><td class="num">71.1%</td><td class="num">25.6%</td><td class="num">39.8%</td><td class="num">8.7%</td><td class="num">22.3%</td><td class="num">33.8%</td><td class="num score">24.40</td></tr>
-<tr data-search="sentinelone s"><th class="col-rank" scope="row">57</th><th class="col-company" scope="row" title="SentinelOne">SentinelOne</th><td>S</td><td class="num">$22.20</td><td class="num">$7.7B</td><td class="num">6.1×</td><td class="num">5.1×</td><td class="num">25.4%</td><td class="num">20.6%</td><td class="num">72.1%</td><td class="num">4.8%</td><td class="num">65.4%</td><td class="num">33.2%</td><td class="num">47.2%</td><td class="num">46.0%</td><td class="num score">24.20</td></tr>
-<tr data-search="sailpoint sail"><th class="col-rank" scope="row">58</th><th class="col-company" scope="row" title="SailPoint">SailPoint</th><td>SAIL</td><td class="num">$20.79</td><td class="num">$11.9B</td><td class="num">9.4×</td><td class="num">7.9×</td><td class="num">31.2%</td><td class="num">16.8%</td><td class="num">66.8%</td><td class="num">14.4%</td><td class="num">65.3%</td><td class="num">19.9%</td><td class="num">50.6%</td><td class="num">48.1%</td><td class="num score">23.38</td></tr>
-<tr data-search="five9 fivn"><th class="col-rank" scope="row">59</th><th class="col-company" scope="row" title="Five9">Five9</th><td>FIVN</td><td class="num">$27.32</td><td class="num">$2.1B</td><td class="num">1.7×</td><td class="num">1.6×</td><td class="num">29.6%</td><td class="num">13.1%</td><td class="num">53.4%</td><td class="num">16.5%</td><td class="num">36.3%</td><td class="num">12.6%</td><td class="num">25.1%</td><td class="num">42.7%</td><td class="num score">23.00</td></tr>
-<tr data-search="fastly fsly"><th class="col-rank" scope="row">60</th><th class="col-company" scope="row" title="Fastly">Fastly</th><td>FSLY</td><td class="num">$16.62</td><td class="num">$2.7B</td><td class="num">3.6×</td><td class="num">3.1×</td><td class="num">27.7%</td><td class="num">20.2%</td><td class="num">63.3%</td><td class="num">7.5%</td><td class="num">48.1%</td><td class="num">23.4%</td><td class="num">30.5%</td><td class="num">47.9%</td><td class="num score">22.22</td></tr>
-<tr data-search="agilysys agys"><th class="col-rank" scope="row">61</th><th class="col-company" scope="row" title="Agilysys">Agilysys</th><td>AGYS</td><td class="num">$121.94</td><td class="num">$3.4B</td><td class="num">8.9×</td><td class="num">7.6×</td><td class="num">39.2%</td><td class="num">17.7%</td><td class="num">64.6%</td><td class="num">21.5%</td><td class="num">24.9%</td><td class="num">22.5%</td><td class="num">12.2%</td><td class="num">57.0%</td><td class="num score">21.75</td></tr>
-<tr data-search="alkami alkt"><th class="col-rank" scope="row">62</th><th class="col-company" scope="row" title="Alkami">Alkami</th><td>ALKT</td><td class="num">$13.98</td><td class="num">$1.5B</td><td class="num">3.3×</td><td class="num">2.9×</td><td class="num">29.5%</td><td class="num">19.4%</td><td class="num">57.5%</td><td class="num">10.0%</td><td class="num">36.9%</td><td class="num">24.7%</td><td class="num">15.8%</td><td class="num">48.9%</td><td class="num score">21.72</td></tr>
-<tr data-search="sprinklr cxm"><th class="col-rank" scope="row">63</th><th class="col-company" scope="row" title="Sprinklr">Sprinklr</th><td>CXM</td><td class="num">$6.80</td><td class="num">$1.6B</td><td class="num">1.4×</td><td class="num">1.3×</td><td class="num">15.7%</td><td class="num">0.8%</td><td class="num">65.1%</td><td class="num">14.9%</td><td class="num">49.0%</td><td class="num">11.2%</td><td class="num">33.4%</td><td class="num">16.5%</td><td class="num score">19.75</td></tr>
-<tr data-search="ncino ncno"><th class="col-rank" scope="row">64</th><th class="col-company" scope="row" title="nCino">nCino</th><td>NCNO</td><td class="num">$22.76</td><td class="num">$2.4B</td><td class="num">4.1×</td><td class="num">3.8×</td><td class="num">28.7%</td><td class="num">8.2%</td><td class="num">62.6%</td><td class="num">20.5%</td><td class="num">34.9%</td><td class="num">19.2%</td><td class="num">22.0%</td><td class="num">36.9%</td><td class="num score">19.38</td></tr>
-      </tbody>
-    </table>
+  <div class="scroller" id="scroller">
+    <header class="mast">
+      <div>
+        <p class="kicker">EMCLOUD</p>
+        <h1>Emerging cloud rankings</h1>
+        <p class="deck">BVP Nasdaq Emerging Cloud Index, weighted across efficiency, valuation, growth, margins, and scale.</p>
+      </div>
+      <div class="mast-side">
+        <p class="updated">Updated 14 Nov 2026 · 17:19 UTC</p>
+        <p class="count"><span id="count">64</span> companies</p>
+        <label class="filter">
+          <span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Filter by company or ticker</span>
+          <input id="q" type="search" placeholder="Filter company or ticker" autocomplete="off" enterkeyhint="search">
+        </label>
+      </div>
+    </header>
+    <p class="hint">Tap a column heading to sort. Scroll sideways for every metric. Rank and company stay fixed.</p>
+    <div id="sheet"></div>
   </div>
-  <p id="empty" class="empty" hidden>No matching companies.</p>
-  <p class="note">Market cap is shown in billions of US dollars. Growth, margins, efficiency, and Rule of X are percentages. Score is the weighted ranking.</p>
+  <footer class="note">Market cap is shown in billions of US dollars. Growth, margins, efficiency, and Rule of X are percentages. Score is the weighted ranking.</footer>
+  <script id="rankings-columns" type="application/json">[{"key": "Rank", "label": "Rank", "unit": "", "kind": "rank"}, {"key": "Company", "label": "Company", "unit": "", "kind": "company"}, {"key": "Symbol", "label": "Ticker", "unit": "", "kind": "text"}, {"key": "Price", "label": "Price", "unit": "USD", "kind": "price"}, {"key": "Market Cap", "label": "Market cap", "unit": "USD bn", "kind": "cap"}, {"key": "EV / Annualized Revenue", "label": "EV / revenue", "unit": "Annualized", "kind": "multiple"}, {"key": "EV / Forward Revenue", "label": "EV / revenue", "unit": "Forward", "kind": "multiple"}, {"key": "Efficiency", "label": "Efficiency", "unit": "", "kind": "pct"}, {"key": "Revenue Growth Rate", "label": "Revenue growth", "unit": "", "kind": "pct"}, {"key": "Gross Margin", "label": "Gross margin", "unit": "", "kind": "pct"}, {"key": "LTM FCF Margin", "label": "FCF margin", "unit": "LTM", "kind": "pct"}, {"key": "SGA Margin", "label": "SG&A margin", "unit": "", "kind": "pct"}, {"key": "R&D Revenue", "label": "R&D", "unit": "of revenue", "kind": "pct"}, {"key": "Sales Marketing Revenue", "label": "Sales & marketing", "unit": "of revenue", "kind": "pct"}, {"key": "Rule of X", "label": "Rule of X", "unit": "", "kind": "pct"}, {"key": "Score", "label": "Score", "unit": "Weighted", "kind": "score"}]</script>
+  <script id="rankings-data" type="application/json">[{"Rank": 1, "Company": "Adobe", "Symbol": "ADBE", "Price": 243.08, "Market Cap": 94606.736, "EV / Annualized Revenue": 3.5411144970414, "EV / Forward Revenue": 3.2709564267571, "Efficiency": 0.52064049202942, "Revenue Growth Rate": 0.12892451569806, "Gross Margin": 0.88713017751479, "LTM FCF Margin": 0.39171597633136, "SGA Margin": 0.342818, "R&D Revenue": 0.18074701578745, "Sales Marketing Revenue": 0.27520215633423, "Rule of X": 0.64956500772749, "Score": 47.1}, {"Rank": 2, "Company": "Palantir", "Symbol": "PLTR", "Price": 167.99, "Market Cap": 404771.480657, "EV / Annualized Revenue": 42.624853155903, "EV / Forward Revenue": 28.259338114844, "Efficiency": 1.3967980929537, "Revenue Growth Rate": 0.95870516437331, "Gross Margin": 0.83431997167818, "LTM FCF Margin": 0.43809292858035, "SGA Margin": 0.292707, "R&D Revenue": 0.09834555847349, "Sales Marketing Revenue": 0.18626626931531, "Rule of X": 2.355503257327, "Score": 46.1}, {"Rank": 3, "Company": "Atlassian", "Symbol": "TEAM", "Price": 149.99, "Market Cap": 37775.42757, "EV / Annualized Revenue": 5.3440582865446, "EV / Forward Revenue": 4.7125699743132, "Efficiency": 0.47222718913734, "Revenue Growth Rate": 0.23705719788378, "Gross Margin": 0.85220325593206, "LTM FCF Margin": 0.23516999125356, "SGA Margin": 0.328106, "R&D Revenue": 0.47676656781327, "Sales Marketing Revenue": 0.23563657180689, "Rule of X": 0.70928438702112, "Score": 42.82}, {"Rank": 4, "Company": "Datadog", "Symbol": "DDOG", "Price": 184.16, "Market Cap": 66489.595087, "EV / Annualized Revenue": 13.065693073829, "EV / Forward Revenue": 10.88961885284, "Efficiency": 0.60779261635315, "Revenue Growth Rate": 0.35164980336498, "Gross Margin": 0.80210594023841, "LTM FCF Margin": 0.25614281298816, "SGA Margin": 0.341732, "R&D Revenue": 0.41282849371833, "Sales Marketing Revenue": 0.2686549650738, "Rule of X": 0.95944241971813, "Score": 42.38}, {"Rank": 5, "Company": "Palo Alto Networks", "Symbol": "PANW", "Price": 322.24, "Market Cap": 263180.492769, "EV / Annualized Revenue": 19.257807387757, "EV / Forward Revenue": 16.843490243757, "Efficiency": 0.64617681341758, "Revenue Growth Rate": 0.34463722397476, "Gross Margin": 0.67565982404692, "LTM FCF Margin": 0.30153958944282, "SGA Margin": 0.411149, "R&D Revenue": 0.22221254355401, "Sales Marketing Revenue": 0.33649825783972, "Rule of X": 0.99081403739234, "Score": 41.65}, {"Rank": 6, "Company": "Salesforce", "Symbol": "CRM", "Price": 217.84, "Market Cap": 179282.32, "EV / Annualized Revenue": 4.633215513442, "EV / Forward Revenue": 4.2171169548828, "Efficiency": 0.44227875724786, "Revenue Growth Rate": 0.10834310277452, "Gross Margin": 0.76650506831203, "LTM FCF Margin": 0.33393565447334, "SGA Margin": 0.41274, "R&D Revenue": 0.14488597569302, "Sales Marketing Revenue": 0.34368883426647, "Rule of X": 0.55062186002238, "Score": 41.58}, {"Rank": 7, "Company": "Nutanix", "Symbol": "NTNX", "Price": 60.38, "Market Cap": 16337.027408, "EV / Annualized Revenue": 5.1173830199794, "EV / Forward Revenue": 4.5885936606015, "Efficiency": 0.43651566972393, "Revenue Growth Rate": 0.1589105220377, "Gross Margin": 0.86524373974676, "LTM FCF Margin": 0.27760514768624, "SGA Margin": 0.488246, "R&D Revenue": 0.27533892053568, "Sales Marketing Revenue": 0.39693714309745, "Rule of X": 0.59542619176163, "Score": 41.42}, {"Rank": 8, "Company": "HubSpot", "Symbol": "HUBS", "Price": 217.25, "Market Cap": 10609.721152, "EV / Annualized Revenue": 2.5161865286286, "EV / Forward Revenue": 2.279320470909, "Efficiency": 0.39280802592203, "Revenue Growth Rate": 0.17052987086143, "Gross Margin": 0.82620717312269, "LTM FCF Margin": 0.2222781550606, "SGA Margin": 0.523447, "R&D Revenue": 0.25204241817852, "Sales Marketing Revenue": 0.43023634761407, "Rule of X": 0.56333789678346, "Score": 40.53}, {"Rank": 9, "Company": "Crowdstrike", "Symbol": "CRWD", "Price": 226.61, "Market Cap": 232531.282816, "EV / Annualized Revenue": 38.809246129403, "EV / Forward Revenue": 31.750069664279, "Efficiency": 0.53172867108683, "Revenue Growth Rate": 0.25830401932671, "Gross Margin": 0.7457320261038, "LTM FCF Margin": 0.27342465176012, "SGA Margin": 0.486715, "R&D Revenue": 0.28982912801639, "Sales Marketing Revenue": 0.36023086851817, "Rule of X": 0.79003269041354, "Score": 40.1}, {"Rank": 10, "Company": "ServiceNow", "Symbol": "NOW", "Price": 102.25, "Market Cap": 106127.01325, "EV / Annualized Revenue": 6.5502321754749, "EV / Forward Revenue": 5.5409193228546, "Efficiency": 0.49437674590765, "Revenue Growth Rate": 0.20516583504549, "Gross Margin": 0.70506575742815, "LTM FCF Margin": 0.28921091086215, "SGA Margin": 0.392262, "R&D Revenue": 0.21100382347223, "Sales Marketing Revenue": 0.32460631196941, "Rule of X": 0.69954258095314, "Score": 39.93}, {"Rank": 11, "Company": "JFrog", "Symbol": "FROG", "Price": 113.6, "Market Cap": 14157.117704, "EV / Annualized Revenue": 18.6809227326, "EV / Forward Revenue": 15.89254822567, "Efficiency": 0.59806205932598, "Revenue Growth Rate": 0.30869860562279, "Gross Margin": 0.79618239660657, "LTM FCF Margin": 0.28936345370319, "SGA Margin": 0.523034, "R&D Revenue": 0.32893300634513, "Sales Marketing Revenue": 0.3728148234653, "Rule of X": 0.90676066494878, "Score": 39.75}, {"Rank": 12, "Company": "DocuSign", "Symbol": "DOCU", "Price": 80.76, "Market Cap": 15094.242024, "EV / Annualized Revenue": 4.1392318731687, "EV / Forward Revenue": 3.8427264074649, "Efficiency": 0.43589013061525, "Revenue Growth Rate": 0.09381291872961, "Gross Margin": 0.79792314209828, "LTM FCF Margin": 0.34207721188564, "SGA Margin": 0.47918, "R&D Revenue": 0.19608406662995, "Sales Marketing Revenue": 0.36063258529491, "Rule of X": 0.52970304934486, "Score": 39.28}, {"Rank": 13, "Company": "Veeva Systems", "Symbol": "VEEV", "Price": 301.53, "Market Cap": 48820.375541, "EV / Annualized Revenue": 11.242130219901, "EV / Forward Revenue": 10.080500548745, "Efficiency": 0.61750079578794, "Revenue Growth Rate": 0.17600474476004, "Gross Margin": 0.74997710038008, "LTM FCF Margin": 0.4414960510279, "SGA Margin": 0.212672, "R&D Revenue": 0.23767892060896, "Sales Marketing Revenue": 0.1326015052205, "Rule of X": 0.79350554054798, "Score": 39.15}, {"Rank": 14, "Company": "Figma", "Symbol": "FIG", "Price": 19.45, "Market Cap": 10418.088069, "EV / Annualized Revenue": 5.6218777186618, "EV / Forward Revenue": 4.5645602489035, "Efficiency": 0.57092238327844, "Revenue Growth Rate": 0.42762051697286, "Gross Margin": 0.80334172170203, "LTM FCF Margin": 0.14330186630558, "SGA Margin": 0.690855, "R&D Revenue": 0.52832282248038, "Sales Marketing Revenue": 0.38984909699131, "Rule of X": 0.9985429002513, "Score": 38.8}, {"Rank": 15, "Company": "Zscaler", "Symbol": "ZS", "Price": 192.47, "Market Cap": 31383.137724, "EV / Annualized Revenue": 8.2880950817482, "EV / Forward Revenue": 7.1473309050547, "Efficiency": 0.4860639775232, "Revenue Growth Rate": 0.24882164994035, "Gross Margin": 0.76836843189321, "LTM FCF Margin": 0.23724232758285, "SGA Margin": 0.531152, "R&D Revenue": 0.26688347850261, "Sales Marketing Revenue": 0.44140129687403, "Rule of X": 0.73488562746355, "Score": 38.7}, {"Rank": 16, "Company": "Workday", "Symbol": "WDAY", "Price": 196.45, "Market Cap": 47344.45, "EV / Annualized Revenue": 4.5029681011703, "EV / Forward Revenue": 4.0903399216072, "Efficiency": 0.39659737884438, "Revenue Growth Rate": 0.12819420783646, "Gross Margin": 0.75386938467346, "LTM FCF Margin": 0.26840317100793, "SGA Margin": 0.361201, "R&D Revenue": 0.27651403249631, "Sales Marketing Revenue": 0.26962087641556, "Rule of X": 0.52479158668084, "Score": 38.22}, {"Rank": 17, "Company": "MongoDB", "Symbol": "MDB", "Price": 334.2, "Market Cap": 26921.929162, "EV / Annualized Revenue": 7.9575497464928, "EV / Forward Revenue": 6.8229864654738, "Efficiency": 0.5184648063924, "Revenue Growth Rate": 0.30498882316935, "Gross Margin": 0.73825464223288, "LTM FCF Margin": 0.21347598322305, "SGA Margin": 0.451254, "R&D Revenue": 0.2803027199517, "Sales Marketing Revenue": 0.35281607894292, "Rule of X": 0.82345362956175, "Score": 37.6}, {"Rank": 18, "Company": "Dynatrace", "Symbol": "DT", "Price": 44.8, "Market Cap": 12855.097158, "EV / Annualized Revenue": 5.2759110589773, "EV / Forward Revenue": 4.603139695086, "Efficiency": 0.42377073819693, "Revenue Growth Rate": 0.17428201737778, "Gross Margin": 0.80957135319131, "LTM FCF Margin": 0.24948872081915, "SGA Margin": 0.436619, "R&D Revenue": 0.23805322106383, "Sales Marketing Revenue": 0.32974966252684, "Rule of X": 0.59805275557471, "Score": 37.28}, {"Rank": 19, "Company": "Snowflake", "Symbol": "SNOW", "Price": 291.0, "Market Cap": 102564.405, "EV / Annualized Revenue": 16.322731289836, "EV / Forward Revenue": 12.742365121083, "Efficiency": 0.54413332966187, "Revenue Growth Rate": 0.35094749290155, "Gross Margin": 0.67023706468804, "LTM FCF Margin": 0.19318583676032, "SGA Margin": 0.506787, "R&D Revenue": 0.38778562802699, "Sales Marketing Revenue": 0.42361408201857, "Rule of X": 0.89508082256343, "Score": 37.08}, {"Rank": 20, "Company": "Rubrik", "Symbol": "RBRK", "Price": 109.88, "Market Cap": 22778.611098, "EV / Annualized Revenue": 12.978366859758, "EV / Forward Revenue": 10.915707650793, "Efficiency": 0.55670283701682, "Revenue Growth Rate": 0.37888078487059, "Gross Margin": 0.78435378926181, "LTM FCF Margin": 0.17782205214623, "SGA Margin": 0.699241, "R&D Revenue": 0.29742253230434, "Sales Marketing Revenue": 0.56291775764222, "Rule of X": 0.93558362188741, "Score": 37.05}, {"Rank": 21, "Company": "Cellebrite", "Symbol": "CLBT", "Price": 11.535, "Market Cap": 2892.815737, "EV / Annualized Revenue": 3.8968906218545, "EV / Forward Revenue": 3.5528756884769, "Efficiency": 0.46095302734308, "Revenue Growth Rate": 0.1824421363337, "Gross Margin": 0.81227603977936, "LTM FCF Margin": 0.27851089100938, "SGA Margin": 0.446983, "R&D Revenue": 0.25700656266169, "Sales Marketing Revenue": 0.30220070651911, "Rule of X": 0.64339516367678, "Score": 36.78}, {"Rank": 22, "Company": "Bill.com", "Symbol": "BILL", "Price": 54.48, "Market Cap": 4678.908128, "EV / Annualized Revenue": 3.5111427973791, "EV / Forward Revenue": 3.1732240453212, "Efficiency": 0.4173836114354, "Revenue Growth Rate": 0.12505644776594, "Gross Margin": 0.80525985516177, "LTM FCF Margin": 0.29232716366946, "SGA Margin": 0.52824, "R&D Revenue": 0.17534121157222, "Sales Marketing Revenue": 0.39255178147438, "Rule of X": 0.54244005920134, "Score": 35.92}, {"Rank": 23, "Company": "Freshworks", "Symbol": "FRSH", "Price": 12.66, "Market Cap": 3321.071315, "EV / Annualized Revenue": 2.7067636078606, "EV / Forward Revenue": 2.3736928067968, "Efficiency": 0.39243754265403, "Revenue Growth Rate": 0.14089941334523, "Gross Margin": 0.85334599149241, "LTM FCF Margin": 0.2515381293088, "SGA Margin": 0.579433, "R&D Revenue": 0.1922470878141, "Sales Marketing Revenue": 0.45671916915192, "Rule of X": 0.53333695599927, "Score": 35.63}, {"Rank": 24, "Company": "Paycom", "Symbol": "PAYC", "Price": 248.86, "Market Cap": 11026.27934, "EV / Annualized Revenue": 5.3585322453108, "EV / Forward Revenue": 5.031912889399, "Efficiency": 0.40537840195807, "Revenue Growth Rate": 0.10237178187715, "Gross Margin": 0.88488414858404, "LTM FCF Margin": 0.30300662008091, "SGA Margin": 0.351239, "R&D Revenue": 0.10706751054852, "Sales Marketing Revenue": 0.22756041426928, "Rule of X": 0.50775018383522, "Score": 34.95}, {"Rank": 25, "Company": "Monday.com", "Symbol": "MNDY", "Price": 78.0, "Market Cap": 3297.381282, "EV / Annualized Revenue": 1.5832626657131, "EV / Forward Revenue": 1.4092589822782, "Efficiency": 0.33912724447396, "Revenue Growth Rate": 0.19150715627022, "Gross Margin": 0.87990252559365, "LTM FCF Margin": 0.14762008820374, "SGA Margin": 0.573673, "R&D Revenue": 0.25352571535467, "Sales Marketing Revenue": 0.45377177451956, "Rule of X": 0.53063440074418, "Score": 34.75}, {"Rank": 26, "Company": "Zeta", "Symbol": "ZETA", "Price": 36.65, "Market Cap": 9362.571507, "EV / Annualized Revenue": 4.7127203389572, "EV / Forward Revenue": 4.0418825898911, "Efficiency": 0.59323785187423, "Revenue Growth Rate": 0.46116042696689, "Gross Margin": 0.60290302806409, "LTM FCF Margin": 0.13207742490734, "SGA Margin": 0.401744, "R&D Revenue": 0.091923728803742, "Sales Marketing Revenue": 0.23682579476195, "Rule of X": 1.0543982788411, "Score": 34.45}, {"Rank": 27, "Company": "Gitlab", "Symbol": "GTLB", "Price": 47.73, "Market Cap": 7952.53395, "EV / Annualized Revenue": 5.8475584183976, "EV / Forward Revenue": 5.1292039560048, "Efficiency": 0.39975766211175, "Revenue Growth Rate": 0.21314629598237, "Gross Margin": 0.84546591488678, "LTM FCF Margin": 0.18661136612938, "SGA Margin": 0.640442, "R&D Revenue": 0.27909420973173, "Sales Marketing Revenue": 0.43882248023299, "Rule of X": 0.61290395809412, "Score": 34.1}, {"Rank": 28, "Company": "Klaviyo", "Symbol": "KVYO", "Price": 22.13, "Market Cap": 6230.975425, "EV / Annualized Revenue": 3.654292423045, "EV / Forward Revenue": 3.0914886294411, "Efficiency": 0.40389892691574, "Revenue Growth Rate": 0.24551917138446, "Gross Margin": 0.74219216078222, "LTM FCF Margin": 0.15837975553128, "SGA Margin": 0.512599, "R&D Revenue": 0.23328715271596, "Sales Marketing Revenue": 0.3720827594863, "Rule of X": 0.64941809830019, "Score": 34.08}, {"Rank": 29, "Company": "Okta", "Symbol": "OKTA", "Price": 182.87, "Market Cap": 31969.503103, "EV / Annualized Revenue": 9.2309015847826, "EV / Forward Revenue": 8.4159156082021, "Efficiency": 0.40980649784998, "Revenue Growth Rate": 0.10576923076923, "Gross Margin": 0.79627329192547, "LTM FCF Margin": 0.30403726708075, "SGA Margin": 0.492678, "R&D Revenue": 0.21184510250569, "Sales Marketing Revenue": 0.35340058574683, "Rule of X": 0.51557572861921, "Score": 34.05}, {"Rank": 30, "Company": "Workiva", "Symbol": "WK", "Price": 68.16, "Market Cap": 3714.89633, "EV / Annualized Revenue": 3.4393007096055, "EV / Forward Revenue": 3.0007911423642, "Efficiency": 0.38524792069083, "Revenue Growth Rate": 0.17307263367326, "Gross Margin": 0.81100763225245, "LTM FCF Margin": 0.21217528701757, "SGA Margin": 0.532419, "R&D Revenue": 0.22156528560648, "Sales Marketing Revenue": 0.4257357435684, "Rule of X": 0.55832055436409, "Score": 33.83}, {"Rank": 31, "Company": "UiPath", "Symbol": "PATH", "Price": 13.27, "Market Cap": 6915.732277, "EV / Annualized Revenue": 3.4066944036163, "EV / Forward Revenue": 3.1433366041168, "Efficiency": 0.35533319400756, "Revenue Growth Rate": 0.13415605095541, "Gross Margin": 0.80404917904918, "LTM FCF Margin": 0.22117714305214, "SGA Margin": 0.516312, "R&D Revenue": 0.21272992890756, "Sales Marketing Revenue": 0.39775681665774, "Rule of X": 0.48948924496297, "Score": 33.78}, {"Rank": 32, "Company": "Cloudflare", "Symbol": "NET", "Price": 305.81, "Market Cap": 109599.935502, "EV / Annualized Revenue": 34.880794473063, "EV / Forward Revenue": 26.821229201545, "Efficiency": 0.50508107769864, "Revenue Growth Rate": 0.39230499602332, "Gross Margin": 0.71210829724235, "LTM FCF Margin": 0.11277608167532, "SGA Margin": 0.570808, "R&D Revenue": 0.22707143787626, "Sales Marketing Revenue": 0.41599532500304, "Rule of X": 0.89738607372197, "Score": 33.62}, {"Rank": 33, "Company": "Qualys", "Symbol": "QLYS", "Price": 172.94, "Market Cap": 6037.234403, "EV / Annualized Revenue": 7.0200272309345, "EV / Forward Revenue": 6.466148862789, "Efficiency": 0.53825869648601, "Revenue Growth Rate": 0.10693893408366, "Gross Margin": 0.8332243191934, "LTM FCF Margin": 0.43131976240235, "SGA Margin": 0.323913, "R&D Revenue": 0.16485057075979, "Sales Marketing Revenue": 0.22254501181456, "Rule of X": 0.64519763056967, "Score": 32.92}, {"Rank": 34, "Company": "Shopify", "Symbol": "SHOP", "Price": 147.09, "Market Cap": 189234.522892, "EV / Annualized Revenue": 12.304350807857, "EV / Forward Revenue": 9.8108483697995, "Efficiency": 0.49353172374859, "Revenue Growth Rate": 0.31575246132208, "Gross Margin": 0.47594869053982, "LTM FCF Margin": 0.17777926242651, "SGA Margin": 0.168701, "R&D Revenue": 0.1235265052587, "Sales Marketing Revenue": 0.1334086256794, "Rule of X": 0.80928418507067, "Score": 32.55}, {"Rank": 35, "Company": "Twilio", "Symbol": "TWLO", "Price": 211.21, "Market Cap": 32681.374899, "EV / Annualized Revenue": 4.944884872648, "EV / Forward Revenue": 4.4713995883221, "Efficiency": 0.38726019070173, "Revenue Growth Rate": 0.19927222505041, "Gross Margin": 0.48800925403453, "LTM FCF Margin": 0.18798796565132, "SGA Margin": 0.224527, "R&D Revenue": 0.18450055920797, "Sales Marketing Revenue": 0.14834461752473, "Rule of X": 0.58653241575214, "Score": 32.4}, {"Rank": 36, "Company": "Samsara", "Symbol": "IOT", "Price": 41.36, "Market Cap": 24220.631444, "EV / Annualized Revenue": 11.291671064458, "EV / Forward Revenue": 9.5202261547792, "Efficiency": 0.42437530279387, "Revenue Growth Rate": 0.29875600286094, "Gross Margin": 0.7725263897002, "LTM FCF Margin": 0.12561929993293, "SGA Margin": 0.549857, "R&D Revenue": 0.2034356813773, "Sales Marketing Revenue": 0.41442622453928, "Rule of X": 0.72313130565481, "Score": 32.12}, {"Rank": 37, "Company": "Procore", "Symbol": "PCOR", "Price": 77.62, "Market Cap": 11611.856838, "EV / Annualized Revenue": 7.4556246243596, "EV / Forward Revenue": 6.3918752345947, "Efficiency": 0.38238208824966, "Revenue Growth Rate": 0.18728585720567, "Gross Margin": 0.80550466925006, "LTM FCF Margin": 0.19509623104399, "SGA Margin": 0.564285, "R&D Revenue": 0.24542536223594, "Sales Marketing Revenue": 0.39791239038704, "Rule of X": 0.56966794545534, "Score": 31.8}, {"Rank": 38, "Company": "Toast", "Symbol": "TOST", "Price": 34.68, "Market Cap": 20149.08, "EV / Annualized Revenue": 2.3049066128218, "EV / Forward Revenue": 1.9526169425546, "Efficiency": 0.28932884447567, "Revenue Growth Rate": 0.21310471524801, "Gross Margin": 0.2751135790005, "LTM FCF Margin": 0.076224129227663, "SGA Margin": 0.139821, "R&D Revenue": 0.056767337807606, "Sales Marketing Revenue": 0.090324384787472, "Rule of X": 0.50243355972368, "Score": 30.93}, {"Rank": 39, "Company": "Elastic", "Symbol": "ESTC", "Price": 88.15, "Market Cap": 9254.981332, "EV / Annualized Revenue": 4.3868888379944, "EV / Forward Revenue": 3.8512961324325, "Efficiency": 0.33378814422588, "Revenue Growth Rate": 0.15128055710736, "Gross Margin": 0.74578394647291, "LTM FCF Margin": 0.18250758711853, "SGA Margin": 0.514436, "R&D Revenue": 0.25011430752943, "Sales Marketing Revenue": 0.40610468794044, "Rule of X": 0.48506870133324, "Score": 30.6}, {"Rank": 40, "Company": "Ringcentral", "Symbol": "RNG", "Price": 75.39, "Market Cap": 6367.465862, "EV / Annualized Revenue": 2.7035051254136, "EV / Forward Revenue": 2.5904087139042, "Efficiency": 0.30528643894105, "Revenue Growth Rate": 0.058541779207867, "Gross Margin": 0.73200817107788, "LTM FCF Margin": 0.24674465973318, "SGA Margin": 0.512668, "R&D Revenue": 0.12939493526205, "Sales Marketing Revenue": 0.43055683365212, "Rule of X": 0.36382821814892, "Score": 29.98}, {"Rank": 41, "Company": "Intapp", "Symbol": "INTA", "Price": 46.16, "Market Cap": 3538.227562, "EV / Annualized Revenue": 5.288797984026, "EV / Forward Revenue": 4.656703768198, "Efficiency": 0.40729284905798, "Revenue Growth Rate": 0.15993296266193, "Gross Margin": 0.7788939737818, "LTM FCF Margin": 0.24735988639605, "SGA Margin": 0.527801, "R&D Revenue": 0.26636890873942, "Sales Marketing Revenue": 0.34703186454236, "Rule of X": 0.56722581171991, "Score": 29.92}, {"Rank": 42, "Company": "Waystar", "Symbol": "WAY", "Price": 27.99, "Market Cap": 5385.042507, "EV / Annualized Revenue": 5.0570047869629, "EV / Forward Revenue": 4.5913665277187, "Efficiency": 0.41479682946605, "Revenue Growth Rate": 0.21207067905945, "Gross Margin": 0.69534800874628, "LTM FCF Margin": 0.2027261504066, "SGA Margin": 0.273168, "R&D Revenue": 0.05932478558022, "Sales Marketing Revenue": 0.15634547916782, "Rule of X": 0.6268675085255, "Score": 29.4}, {"Rank": 43, "Company": "Tenable", "Symbol": "TENB", "Price": 40.76, "Market Cap": 4259.730713, "EV / Annualized Revenue": 4.1658631854971, "EV / Forward Revenue": 3.8822941880588, "Efficiency": 0.34852367802153, "Revenue Growth Rate": 0.094862145460307, "Gross Margin": 0.77809375983675, "LTM FCF Margin": 0.25366153256123, "SGA Margin": 0.510167, "R&D Revenue": 0.21365338749173, "Sales Marketing Revenue": 0.3945513102748, "Rule of X": 0.44338582348184, "Score": 28.98}, {"Rank": 44, "Company": "AppFolio", "Symbol": "APPF", "Price": 224.34, "Market Cap": 7954.148788, "EV / Annualized Revenue": 6.4900189623627, "EV / Forward Revenue": 5.5371410513134, "Efficiency": 0.42434374590896, "Revenue Growth Rate": 0.18583293563743, "Gross Margin": 0.64293806710383, "LTM FCF Margin": 0.23851081027153, "SGA Margin": 0.247423, "R&D Revenue": 0.18368298625578, "Sales Marketing Revenue": 0.15657074320676, "Rule of X": 0.61017668154639, "Score": 28.32}, {"Rank": 45, "Company": "Paylocity", "Symbol": "PCTY", "Price": 178.048, "Market Cap": 9251.963597, "EV / Annualized Revenue": 5.1165967760683, "EV / Forward Revenue": 4.7713159268731, "Efficiency": 0.37834957430594, "Revenue Growth Rate": 0.10656536950109, "Gross Margin": 0.67417732897321, "LTM FCF Margin": 0.27178420480485, "SGA Margin": 0.347695, "R&D Revenue": 0.13248169977855, "Sales Marketing Revenue": 0.23491344004092, "Rule of X": 0.48491494380703, "Score": 28.1}, {"Rank": 46, "Company": "DigitalOcean", "Symbol": "DOCN", "Price": 86.32, "Market Cap": 10185.485071, "EV / Annualized Revenue": 8.8674251467969, "EV / Forward Revenue": 5.4535027475973, "Efficiency": 0.49000392449307, "Revenue Growth Rate": 0.39871273417699, "Gross Margin": 0.50147575282074, "LTM FCF Margin": 0.091291190316073, "SGA Margin": 0.231759, "R&D Revenue": 0.18989798407685, "Sales Marketing Revenue": 0.082490606899066, "Rule of X": 0.88871665867006, "Score": 28.08}, {"Rank": 47, "Company": "PagerDuty", "Symbol": "PD", "Price": 15.95, "Market Cap": 1241.719638, "EV / Annualized Revenue": 2.3797245933653, "EV / Forward Revenue": 2.3353067349701, "Efficiency": 0.26270342360774, "Revenue Growth Rate": 0.0083055805398222, "Gross Margin": 0.83908193770292, "LTM FCF Margin": 0.25439784306792, "SGA Margin": 0.535276, "R&D Revenue": 0.24591850553733, "Sales Marketing Revenue": 0.33851390548033, "Rule of X": 0.27100900414757, "Score": 27.63}, {"Rank": 48, "Company": "Asana", "Symbol": "ASAN", "Price": 9.71, "Market Cap": 2223.299836, "EV / Annualized Revenue": 2.4739924363186, "EV / Forward Revenue": 2.3066501274025, "Efficiency": 0.24209183765655, "Revenue Growth Rate": 0.098981394970955, "Gross Margin": 0.85988476590475, "LTM FCF Margin": 0.14311044268559, "SGA Margin": 0.672226, "R&D Revenue": 0.35569182021598, "Sales Marketing Revenue": 0.47692322554391, "Rule of X": 0.3410732326275, "Score": 26.68}, {"Rank": 49, "Company": "BlackLine", "Symbol": "BL", "Price": 29.53, "Market Cap": 1686.42564, "EV / Annualized Revenue": 2.3837626424538, "EV / Forward Revenue": 2.193753564771, "Efficiency": 0.314559960005, "Revenue Growth Rate": 0.084727129956812, "Gross Margin": 0.75744586237564, "LTM FCF Margin": 0.22983283004819, "SGA Margin": 0.522841, "R&D Revenue": 0.16132881370443, "Sales Marketing Revenue": 0.35376708572224, "Rule of X": 0.39928708996182, "Score": 26.33}, {"Rank": 50, "Company": "Wix", "Symbol": "WIX", "Price": 67.17, "Market Cap": 2811.031654, "EV / Annualized Revenue": 1.6604946173476, "EV / Forward Revenue": 1.4947341299421, "Efficiency": 0.28587674279234, "Revenue Growth Rate": 0.12860604045179, "Gross Margin": 0.67846675962221, "LTM FCF Margin": 0.15727070234055, "SGA Margin": 0.417604, "R&D Revenue": 0.33410258870959, "Sales Marketing Revenue": 0.33048311633024, "Rule of X": 0.41448278324412, "Score": 25.88}, {"Rank": 51, "Company": "Braze", "Symbol": "BRZE", "Price": 46.64, "Market Cap": 5297.577675, "EV / Annualized Revenue": 5.4835581514325, "EV / Forward Revenue": 4.7152396936089, "Efficiency": 0.35473240234662, "Revenue Growth Rate": 0.26161089550333, "Gross Margin": 0.66829203890331, "LTM FCF Margin": 0.093121506843287, "SGA Margin": 0.565822, "R&D Revenue": 0.21632957382819, "Sales Marketing Revenue": 0.42236236291431, "Rule of X": 0.61634329784994, "Score": 25.4}, {"Rank": 52, "Company": "Q2", "Symbol": "QTWO", "Price": 73.95, "Market Cap": 4568.745031, "EV / Annualized Revenue": 4.9659245773372, "EV / Forward Revenue": 4.5144059953212, "Efficiency": 0.37730991183714, "Revenue Growth Rate": 0.1193184071709, "Gross Margin": 0.59725562627618, "LTM FCF Margin": 0.25799150466623, "SGA Margin": 0.269999, "R&D Revenue": 0.18957695595819, "Sales Marketing Revenue": 0.11731267753234, "Rule of X": 0.49662831900804, "Score": 25.28}, {"Rank": 53, "Company": "ServiceTitan", "Symbol": "TTAN", "Price": 82.61, "Market Cap": 7969.213467, "EV / Annualized Revenue": 6.4366225346364, "EV / Forward Revenue": 5.6597960235932, "Efficiency": 0.32344912753618, "Revenue Growth Rate": 0.2091209839627, "Gross Margin": 0.71470097965541, "LTM FCF Margin": 0.11432814357349, "SGA Margin": 0.507301, "R&D Revenue": 0.32467480018408, "Sales Marketing Revenue": 0.28210250486039, "Rule of X": 0.53257011149888, "Score": 25.17}, {"Rank": 54, "Company": "AvePoint", "Symbol": "AVPT", "Price": 16.55, "Market Cap": 3476.769186, "EV / Annualized Revenue": 5.889164682237, "EV / Forward Revenue": 4.8778603134001, "Efficiency": 0.37908253603043, "Revenue Growth Rate": 0.19480898221056, "Gross Margin": 0.72198407371247, "LTM FCF Margin": 0.18427355381987, "SGA Margin": 0.511691, "R&D Revenue": 0.12202376068657, "Sales Marketing Revenue": 0.35576213058532, "Rule of X": 0.57389151824098, "Score": 24.9}, {"Rank": 55, "Company": "Netskope", "Symbol": "NTSK", "Price": 21.75, "Market Cap": 8886.783519, "EV / Annualized Revenue": 9.6939486524048, "EV / Forward Revenue": 8.049956375785, "Efficiency": 0.21203562070088, "Revenue Growth Rate": 0.29154124550534, "Gross Margin": 0.73917321495776, "LTM FCF Margin": -0.079505624804458, "SGA Margin": 0.926968, "R&D Revenue": 0.71446957275776, "Sales Marketing Revenue": 0.57003672897802, "Rule of X": 0.50357686620621, "Score": 24.42}, {"Rank": 56, "Company": "SPS Commerce", "Symbol": "SPSC", "Price": 81.3, "Market Cap": 2881.347284, "EV / Annualized Revenue": 3.4208339666173, "EV / Forward Revenue": 3.2141165454674, "Efficiency": 0.29708625550351, "Revenue Growth Rate": 0.040773232791305, "Gross Margin": 0.71109604496906, "LTM FCF Margin": 0.25631302271221, "SGA Margin": 0.398253, "R&D Revenue": 0.087299339301621, "Sales Marketing Revenue": 0.22286106109057, "Rule of X": 0.33785948829482, "Score": 24.4}, {"Rank": 57, "Company": "SentinelOne", "Symbol": "S", "Price": 22.2, "Market Cap": 7726.690397, "EV / Annualized Revenue": 6.0547110916464, "EV / Forward Revenue": 5.1266258978356, "Efficiency": 0.25402862834126, "Revenue Growth Rate": 0.20562136896479, "Gross Margin": 0.7206564810724, "LTM FCF Margin": 0.048407259376466, "SGA Margin": 0.65355, "R&D Revenue": 0.33235612139393, "Sales Marketing Revenue": 0.4724175028033, "Rule of X": 0.45964999730605, "Score": 24.2}, {"Rank": 58, "Company": "SailPoint", "Symbol": "SAIL", "Price": 20.79, "Market Cap": 11869.25285, "EV / Annualized Revenue": 9.3833224718519, "EV / Forward Revenue": 7.8851826986687, "Efficiency": 0.31240923198821, "Revenue Growth Rate": 0.16815769465008, "Gross Margin": 0.66828145188188, "LTM FCF Margin": 0.14425153733813, "SGA Margin": 0.652813, "R&D Revenue": 0.19857765987384, "Sales Marketing Revenue": 0.50550129381645, "Rule of X": 0.48056692663829, "Score": 23.38}, {"Rank": 59, "Company": "Five9", "Symbol": "FIVN", "Price": 27.32, "Market Cap": 2057.206272, "EV / Annualized Revenue": 1.7059587074664, "EV / Forward Revenue": 1.5591666733806, "Efficiency": 0.29637056136182, "Revenue Growth Rate": 0.1310944890705, "Gross Margin": 0.5342635236914, "LTM FCF Margin": 0.16527607229132, "SGA Margin": 0.363204, "R&D Revenue": 0.1262176279335, "Sales Marketing Revenue": 0.25137431244099, "Rule of X": 0.42746505043232, "Score": 23.0}, {"Rank": 60, "Company": "Fastly", "Symbol": "FSLY", "Price": 16.62, "Market Cap": 2679.144, "EV / Annualized Revenue": 3.5811846387617, "EV / Forward Revenue": 3.1069619695671, "Efficiency": 0.27673862452727, "Revenue Growth Rate": 0.20205659101395, "Gross Margin": 0.63309375213599, "LTM FCF Margin": 0.074682033513326, "SGA Margin": 0.48082, "R&D Revenue": 0.23416761339539, "Sales Marketing Revenue": 0.30522858457914, "Rule of X": 0.47879521554122, "Score": 22.22}, {"Rank": 61, "Company": "Agilysys", "Symbol": "AGYS", "Price": 121.94, "Market Cap": 3432.727331, "EV / Annualized Revenue": 8.8699344767566, "EV / Forward Revenue": 7.5573638218657, "Efficiency": 0.392242326041, "Revenue Growth Rate": 0.17731623349601, "Gross Margin": 0.6459618680377, "LTM FCF Margin": 0.21492609254499, "SGA Margin": 0.248503, "R&D Revenue": 0.22521154326401, "Sales Marketing Revenue": 0.12160325692416, "Rule of X": 0.569558559537, "Score": 21.75}, {"Rank": 62, "Company": "Alkami", "Symbol": "ALKT", "Price": 13.98, "Market Cap": 1496.45162, "EV / Annualized Revenue": 3.2786663429965, "EV / Forward Revenue": 2.8789846715377, "Efficiency": 0.2945938161941, "Revenue Growth Rate": 0.19438886626414, "Gross Margin": 0.57503835862161, "LTM FCF Margin": 0.10020494992995, "SGA Margin": 0.369075, "R&D Revenue": 0.24660923538747, "Sales Marketing Revenue": 0.15820310973179, "Rule of X": 0.48898268245824, "Score": 21.72}, {"Rank": 63, "Company": "Sprinklr", "Symbol": "CXM", "Price": 6.8, "Market Cap": 1578.765112, "EV / Annualized Revenue": 1.3652074126404, "EV / Forward Revenue": 1.3138055976627, "Efficiency": 0.15744692294224, "Revenue Growth Rate": 0.0080315034899077, "Gross Margin": 0.65130553983054, "LTM FCF Margin": 0.14941541945233, "SGA Margin": 0.490387, "R&D Revenue": 0.11206783963926, "Sales Marketing Revenue": 0.33434301543622, "Rule of X": 0.16547842643215, "Score": 19.75}, {"Rank": 64, "Company": "nCino", "Symbol": "NCNO", "Price": 22.76, "Market Cap": 2406.55532, "EV / Annualized Revenue": 4.1333474947361, "EV / Forward Revenue": 3.8221842228326, "Efficiency": 0.2871169983004, "Revenue Growth Rate": 0.081886906561839, "Gross Margin": 0.62590294470221, "LTM FCF Margin": 0.20523009173856, "SGA Margin": 0.348715, "R&D Revenue": 0.19194560333245, "Sales Marketing Revenue": 0.2200680119053, "Rule of X": 0.36900390486224, "Score": 19.38}]</script>
+  <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@6.7.1/dist/js/tabulator.min.js"></script>
   <script>
-    const input = document.getElementById("q");
-    const rows = Array.from(document.querySelectorAll("#rows tr"));
-    const empty = document.getElementById("empty");
+    const columns = JSON.parse(document.getElementById("rankings-columns").textContent);
+    const data = JSON.parse(document.getElementById("rankings-data").textContent);
+    const oneDecimal = new Intl.NumberFormat("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const priceFormat = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+    const scoreFormat = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function label(value, className) {
+      const span = document.createElement("span");
+      if (className) span.className = className;
+      span.textContent = String(value);
+      return span;
+    }
+
+    function formatNumber(kind, value) {
+      if (kind === "price") return priceFormat.format(value);
+      if (kind === "cap") return "$" + oneDecimal.format(value / 1000) + "B";
+      if (kind === "multiple") return oneDecimal.format(value) + "\u00d7";
+      if (kind === "pct") return oneDecimal.format(value * 100) + "%";
+      if (kind === "score") return scoreFormat.format(value);
+      return String(value);
+    }
+
+    function headerTitle(name, unit) {
+      return function () {
+        const wrap = document.createElement("span");
+        wrap.className = "th-label";
+        const title = document.createElement("span");
+        title.textContent = name;
+        const small = document.createElement("small");
+        small.textContent = unit || "\u00a0";
+        wrap.append(title, small);
+        return wrap;
+      };
+    }
+
+    function widths() {
+      const narrow = window.matchMedia("(max-width: 720px)").matches;
+      return { rank: narrow ? 58 : 78, company: narrow ? 148 : 220 };
+    }
+
+    function buildColumns() {
+      const size = widths();
+      return columns.map((column) => {
+        const numeric = column.kind !== "rank" && column.kind !== "company" && column.kind !== "text";
+        const definition = {
+          title: column.label,
+          field: column.key,
+          titleFormatter: headerTitle(column.label, column.unit),
+          headerSort: true,
+          sorter: numeric || column.kind === "rank" ? "number" : "string",
+          hozAlign: numeric ? "right" : "left",
+          resizable: false,
+        };
+        if (column.kind === "rank") {
+          definition.frozen = true;
+          definition.width = size.rank;
+          definition.minWidth = size.rank;
+          definition.formatter = (cell) => {
+            const value = cell.getValue();
+            cell.getElement().classList.toggle("top", value <= 3);
+            return label(value);
+          };
+        } else if (column.kind === "company") {
+          definition.frozen = true;
+          definition.width = size.company;
+          definition.minWidth = size.company;
+          definition.formatter = (cell) => {
+            const value = cell.getValue();
+            cell.getElement().title = value;
+            return label(value);
+          };
+        } else if (numeric) {
+          definition.minWidth = 112;
+          definition.cssClass = column.kind === "score" ? "num score" : "num";
+          definition.formatter = (cell) => {
+            const value = cell.getValue();
+            return label(formatNumber(column.kind, value), value < 0 ? "neg" : "");
+          };
+        }
+        return definition;
+      });
+    }
+
     const count = document.getElementById("count");
-    input.addEventListener("input", () => {
-      const query = input.value.trim().toLowerCase();
-      let shown = 0;
-      for (const row of rows) {
-        const match = query.length === 0 || row.dataset.search.includes(query);
-        row.hidden = !match;
-        if (match) shown += 1;
+    const table = new Tabulator("#sheet", {
+      data,
+      index: "Symbol",
+      columns: buildColumns(),
+      layout: "fitData",
+      renderVertical: "basic",
+      renderHorizontal: "basic",
+      headerSortTristate: false,
+      selectableRows: false,
+      placeholder: "No matching companies.",
+      initialSort: [{ column: "Rank", dir: "asc" }],
+    });
+
+    function showCount(rows) {
+      count.textContent = String(rows.length);
+    }
+    table.on("dataLoaded", showCount);
+    table.on("dataFiltered", (_filters, rows) => showCount(rows));
+
+    document.getElementById("q").addEventListener("input", (event) => {
+      const query = event.target.value.trim().toLowerCase();
+      if (!query) {
+        table.clearFilter();
+        return;
       }
-      empty.hidden = shown !== 0;
-      count.textContent = String(shown);
+      table.setFilter((row) => (row.Company + " " + row.Symbol).toLowerCase().includes(query));
+    });
+
+    window.matchMedia("(max-width: 720px)").addEventListener("change", () => {
+      const size = widths();
+      table.getColumn("Rank").updateDefinition({ width: size.rank, minWidth: size.rank });
+      table.getColumn("Company").updateDefinition({ width: size.company, minWidth: size.company });
     });
   </script>
 </body>
